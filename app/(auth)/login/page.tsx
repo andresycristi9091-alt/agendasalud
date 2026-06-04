@@ -33,7 +33,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="bg-white p-8 rounded-xl shadow-sm border w-full max-w-md">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">AgendaSalud APS</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Sami Salud</h1>
           <p className="text-slate-500 mt-1 text-sm">
             Ingresa con tu cuenta del centro de salud
           </p>

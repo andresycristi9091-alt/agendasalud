@@ -5,7 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'AgendaSalud APS',
+  title: 'Sami Salud',
   description: 'Agendamiento inteligente para centros de salud primaria',
 }
 
