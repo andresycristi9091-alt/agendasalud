@@ -1,5 +1,6 @@
 import { obtenerCitasDia } from '@/lib/actions/citas'
 import { AgendaDia } from '@/components/agenda/AgendaDia'
+import { FechaSelectorAgenda } from '@/components/agenda/FechaSelectorAgenda'
 import { formatFecha } from '@/lib/utils'
 
 type AgendaPageProps = {
@@ -22,20 +23,7 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <form>
-            <input
-              type="date"
-              name="fecha"
-              defaultValue={fecha}
-              className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onChange={(e) => {
-                const url = new URL(window.location.href)
-                url.searchParams.set('fecha', e.target.value)
-                window.location.href = url.toString()
-              }}
-            />
-          </form>
+          <FechaSelectorAgenda fecha={fecha} />
           <a
             href="/dashboard/nueva-cita"
             className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm
