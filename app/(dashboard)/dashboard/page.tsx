@@ -161,22 +161,13 @@ export default function DashboardHomePage() {
             <Link
               key={a.href}
               href={a.href}
-              className="group rounded-2xl p-6 transition-all"
+              className="group quick-card rounded-2xl p-6 block"
               style={{
                 backgroundColor: 'white',
                 border:          '1.5px solid #E2E8F0',
                 boxShadow:       '0 1px 2px rgba(15,23,42,0.04)',
                 textDecoration:  'none',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor  = a.color
-                e.currentTarget.style.boxShadow    = `0 8px 20px ${a.color}22`
-                e.currentTarget.style.transform    = 'translateY(-2px)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#E2E8F0'
-                e.currentTarget.style.boxShadow   = '0 1px 2px rgba(15,23,42,0.04)'
-                e.currentTarget.style.transform   = 'translateY(0)'
+                transition:      'transform 0.15s, box-shadow 0.15s, border-color 0.15s',
               }}
             >
               <div

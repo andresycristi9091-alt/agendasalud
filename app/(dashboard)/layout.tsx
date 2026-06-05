@@ -38,29 +38,18 @@ export default async function DashboardLayout({
             </Link>
 
             <nav className="hidden md:flex items-center gap-1">
-              {[
-                { href: '/dashboard/agenda',        label: 'Agenda',         icon: '📅' },
-                { href: '/dashboard/nueva-cita',    label: 'Nueva Cita',     icon: '➕' },
-                { href: '/dashboard/configuracion', label: 'Configuración',  icon: '⚙️' },
-              ].map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all"
-                  style={{ color: '#475569' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#EFF6FF'
-                    e.currentTarget.style.color = '#2563EB'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                    e.currentTarget.style.color = '#475569'
-                  }}
-                >
-                  <span>{item.icon}</span>
-                  {item.label}
-                </Link>
-              ))}
+              <Link href="/dashboard/agenda"
+                className="nav-link flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium">
+                <span>📅</span> Agenda
+              </Link>
+              <Link href="/dashboard/nueva-cita"
+                className="nav-link flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium">
+                <span>➕</span> Nueva Cita
+              </Link>
+              <Link href="/dashboard/configuracion"
+                className="nav-link flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium">
+                <span>⚙️</span> Configuración
+              </Link>
             </nav>
           </div>
 
