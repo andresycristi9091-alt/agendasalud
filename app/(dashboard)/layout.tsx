@@ -42,13 +42,21 @@ export default async function DashboardLayout({
                 className="nav-link flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium">
                 <span>📅</span> Agenda
               </Link>
+              <Link href="/dashboard/citas"
+                className="nav-link flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium">
+                <span>📋</span> Citas
+              </Link>
+              <Link href="/dashboard/disponibilidad"
+                className="nav-link flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium">
+                <span>🗓</span> Disponibilidad
+              </Link>
               <Link href="/dashboard/nueva-cita"
                 className="nav-link flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium">
                 <span>➕</span> Nueva Cita
               </Link>
               <Link href="/dashboard/configuracion"
                 className="nav-link flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium">
-                <span>⚙️</span> Configuración
+                <span>⚙️</span> Config
               </Link>
             </nav>
           </div>

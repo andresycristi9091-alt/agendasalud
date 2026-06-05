@@ -64,6 +64,17 @@ body {
   line-height: 24px;
 }
 
+/* ── AgendaSalud brand variables ── */
+:root {
+  --agenda-blue:  #2563EB;
+  --agenda-cyan:  #0891B2;
+  --agenda-green: #10B981;
+  --agenda-dark:  #0F172A;
+  --agenda-muted: #64748B;
+  --agenda-bg:    #F8FAFC;
+  --agenda-card:  #FFFFFF;
+}
+
 /* Nav links del dashboard */
 .nav-link {
   color: #475569;
