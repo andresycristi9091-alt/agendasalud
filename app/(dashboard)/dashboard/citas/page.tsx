@@ -30,7 +30,7 @@ export default function CitasDashboardPage() {
   const [updating, setUpdating]         = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/dashboard/appointments?professionalId=default')
+    fetch('/api/dashboard/appointments?professionalId=prof-001')
       .then((r) => r.json())
       .then((d) => setAppointments(d.appointments ?? []))
       .finally(() => setLoading(false))

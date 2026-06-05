@@ -52,7 +52,7 @@ export default function DisponibilidadPage() {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          professionalId: 'default',
+          professionalId: 'prof-001',
           dayOfWeek:      day,
           startTime,
           endTime,
