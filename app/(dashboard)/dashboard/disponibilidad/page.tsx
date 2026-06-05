@@ -137,7 +137,7 @@ export default function DisponibilidadPage() {
         <div className="bg-white rounded-2xl border border-slate-200 p-6" style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}>
           <h2 className="font-bold text-slate-900 mb-4">Horarios configurados</h2>
           <div className="space-y-3">
-            {blocks.filter((b: AvailabilityBlock & { active?: boolean | string }) => b.active !== false && b.active !== 'FALSE').map((b) => {
+            {blocks.filter((b: AvailabilityBlock & { active?: string }) => String(b.active).toUpperCase() !== 'FALSE').map((b) => {
               const dayLabel = DAYS.find((d) => d.key === b.dayOfWeek)?.label ?? b.dayOfWeek
               return (
                 <div

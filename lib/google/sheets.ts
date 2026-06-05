@@ -109,7 +109,7 @@ export async function getProfessionalBySlug(slug: string): Promise<Professional 
   const rows = await getSheetData('professionals!A:N')
   if (rows.length < 2) return null
   const headers = rows[0]
-  const found   = rows.slice(1).find((r) => r[1] === slug && r[11] === 'TRUE')
+  const found   = rows.slice(1).find((r) => r[1] === slug && r[11]?.toUpperCase() === 'TRUE')
   if (!found) return null
   return rowToObject<Professional>(headers, found)
 }
@@ -127,7 +127,7 @@ export async function getAvailabilityByProfessional(professionalId: string): Pro
   if (rows.length < 2) return []
   const headers = rows[0]
   return rows.slice(1)
-    .filter((r) => r[1] === professionalId && r[6] === 'TRUE')
+    .filter((r) => r[1] === professionalId && r[6]?.toUpperCase() === 'TRUE')
     .map((r) => rowToObject<Availability>(headers, r))
 }
 
@@ -143,7 +143,7 @@ export async function createAvailability(data: Omit<Availability, 'createdAt' | 
   await appendRow('availability!A:I', [
     data.id, data.professionalId, data.dayOfWeek,
     data.startTime, data.endTime, String(data.slotDuration),
-    String(data.active), now, now,
+    data.active ? 'TRUE' : 'FALSE', now, now,
   ])
 }
 
