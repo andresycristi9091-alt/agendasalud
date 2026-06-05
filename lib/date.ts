@@ -1,9 +1,5 @@
-import { format, addMinutes, parseISO, isWithinInterval, parse } from 'date-fns'
-import { toZonedTime, fromZonedTime, formatInTimeZone } from 'date-fns-tz'
-
 export const TIMEZONE = 'America/Santiago'
 
-// Día de la semana en español → clave de dayOfWeek
 const DAY_MAP: Record<number, string> = {
   0: 'sunday',
   1: 'monday',
@@ -14,38 +10,45 @@ const DAY_MAP: Record<number, string> = {
   6: 'saturday',
 }
 
-export function getDayOfWeekKey(date: Date): string {
-  const zoned = toZonedTime(date, TIMEZONE)
-  return DAY_MAP[zoned.getDay()]
+// Día de semana en clave a partir de una fecha string 'YYYY-MM-DD'
+export function getDayOfWeekKey(dateStr: string): string {
+  // Usamos mediodía para evitar problemas de zona horaria
+  const d = new Date(`${dateStr}T12:00:00`)
+  return DAY_MAP[d.getDay()] ?? 'monday'
 }
 
-// Generar slots de tiempo entre startTime y endTime con slotDuration (minutos)
+// Generar slots entre startTime y endTime con duración en minutos
 export function generateTimeSlots(
-  date:          string, // 'YYYY-MM-DD'
-  startTime:     string, // 'HH:mm'
-  endTime:       string, // 'HH:mm'
-  slotDuration:  number  // minutos
+  date:         string,
+  startTime:    string,
+  endTime:      string,
+  slotDuration: number
 ): Array<{ startTime: string; endTime: string; startISO: string; endISO: string }> {
   const [sh, sm] = startTime.split(':').map(Number)
   const [eh, em] = endTime.split(':').map(Number)
 
-  const base      = parseISO(`${date}T${startTime}:00`)
-  const endBase   = parseISO(`${date}T${endTime}:00`)
-  const startUTC  = fromZonedTime(base, TIMEZONE)
-  const endUTC    = fromZonedTime(endBase, TIMEZONE)
+  const startMinutes = sh * 60 + sm
+  const endMinutes   = eh * 60 + em
 
   const slots: Array<{ startTime: string; endTime: string; startISO: string; endISO: string }> = []
-  let current = startUTC
 
-  while (true) {
-    const next = addMinutes(current, slotDuration)
-    if (next > endUTC) break
+  let current = startMinutes
+  while (current + slotDuration <= endMinutes) {
+    const next = current + slotDuration
+
+    const startHH = String(Math.floor(current / 60)).padStart(2, '0')
+    const startMM = String(current % 60).padStart(2, '0')
+    const endHH   = String(Math.floor(next / 60)).padStart(2, '0')
+    const endMM   = String(next % 60).padStart(2, '0')
+
+    const startISO = new Date(`${date}T${startHH}:${startMM}:00`).toISOString()
+    const endISO   = new Date(`${date}T${endHH}:${endMM}:00`).toISOString()
 
     slots.push({
-      startTime: formatInTimeZone(current, TIMEZONE, 'HH:mm'),
-      endTime:   formatInTimeZone(next, TIMEZONE, 'HH:mm'),
-      startISO:  current.toISOString(),
-      endISO:    next.toISOString(),
+      startTime: `${startHH}:${startMM}`,
+      endTime:   `${endHH}:${endMM}`,
+      startISO,
+      endISO,
     })
 
     current = next
@@ -56,36 +59,21 @@ export function generateTimeSlots(
 
 // Verificar si un slot se superpone con periodos ocupados
 export function isSlotBusy(
-  slotStart: string, // ISO
-  slotEnd:   string, // ISO
+  slotStart: string,
+  slotEnd:   string,
   busySlots: Array<{ start: string; end: string }>
 ): boolean {
-  const s = new Date(slotStart)
-  const e = new Date(slotEnd)
+  const s = new Date(slotStart).getTime()
+  const e = new Date(slotEnd).getTime()
 
   return busySlots.some((b) => {
-    const bs = new Date(b.start)
-    const be = new Date(b.end)
+    const bs = new Date(b.start).getTime()
+    const be = new Date(b.end).getTime()
     return s < be && e > bs
   })
 }
 
-// Formatear fecha para mostrar en español
-export function formatDateDisplay(dateStr: string): string {
-  const date  = parseISO(dateStr + 'T12:00:00')
-  const zoned = toZonedTime(date, TIMEZONE)
-  return formatInTimeZone(date, TIMEZONE, "EEEE d 'de' MMMM 'de' yyyy")
-}
-
-// Hoy en America/Santiago como 'YYYY-MM-DD'
-export function todayInSantiago(): string {
-  return formatInTimeZone(new Date(), TIMEZONE, 'yyyy-MM-dd')
-}
-
-// Calcular endTime sumando minutos a startTime en un date
-export function addMinutesToTime(date: string, time: string, minutes: number): string {
-  const base    = parseISO(`${date}T${time}:00`)
-  const zoned   = fromZonedTime(base, TIMEZONE)
-  const result  = addMinutes(zoned, minutes)
-  return formatInTimeZone(result, TIMEZONE, 'HH:mm')
+// Hoy como 'YYYY-MM-DD'
+export function todayString(): string {
+  return new Date().toISOString().split('T')[0]
 }

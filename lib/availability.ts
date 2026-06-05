@@ -1,6 +1,8 @@
 import { getBusySlots } from './google/calendar'
 import { getAvailabilityByProfessional, getAppointmentsByDateAndProfessional, type Professional } from './google/sheets'
 import { generateTimeSlots, isSlotBusy, getDayOfWeekKey, TIMEZONE } from './date'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _tz = TIMEZONE
 
 export type TimeSlot = {
   startTime: string
@@ -15,7 +17,7 @@ export async function getAvailableSlotsForDate(
   date: string
 ): Promise<TimeSlot[]> {
   // Determinar día de la semana
-  const dayKey = getDayOfWeekKey(new Date(`${date}T12:00:00`))
+  const dayKey = getDayOfWeekKey(date)
 
   // Bloques de disponibilidad del profesional para ese día
   const availabilityBlocks = await getAvailabilityByProfessional(professional.id)

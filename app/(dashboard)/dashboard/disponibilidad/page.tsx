@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 
 const DAYS = [
   { key: 'monday',    label: 'Lunes'     },
@@ -35,12 +35,12 @@ export default function DisponibilidadPage() {
   const [duration, setDuration] = useState(30)
 
   // Cargar disponibilidad al montar
-  useState(() => {
+  useEffect(() => {
     fetch('/api/dashboard/availability')
       .then((r) => r.json())
       .then((d) => setBlocks(d.availability ?? []))
       .catch(() => {})
-  })
+  }, [])
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault()
