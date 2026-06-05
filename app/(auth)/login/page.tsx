@@ -55,7 +55,7 @@ export default function LoginPage() {
             className="text-white mb-4"
             style={{ fontSize: 36, fontWeight: 800, lineHeight: '44px', letterSpacing: '-0.02em' }}
           >
-            Gestiona las horas médicas de tu CESFAM
+            Gestiona las horas médicas de tu centro de salud
           </h2>
           <p className="text-white/70 text-lg leading-relaxed mb-10">
             Agenda inteligente, recordatorios automáticos y métricas en tiempo real.

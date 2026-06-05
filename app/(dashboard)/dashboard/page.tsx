@@ -55,7 +55,7 @@ const QUICK_ACTIONS = [
   {
     href:    '/dashboard/configuracion',
     icon:    '⚙️',
-    title:   'Configurar CESFAM',
+    title:   'Configurar centro',
     desc:    'Registra médicos, boxes y horarios',
     color:   '#7C3AED',
     bg:      '#F5F3FF',

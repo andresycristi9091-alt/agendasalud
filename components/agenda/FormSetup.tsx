@@ -86,7 +86,7 @@ export function FormSetup({ centros, medicos }: FormSetupProps) {
       {/* Crear centro */}
       <div className={sectionClass}>
         <h2 className="font-semibold text-slate-900 mb-4">
-          {centros.length === 0 ? '1. Registrar el CESFAM' : 'Agregar nuevo centro'}
+          {centros.length === 0 ? '1. Registrar el centro de salud' : 'Agregar nuevo centro'}
         </h2>
         <form onSubmit={handleCrearCentro} className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
@@ -94,7 +94,7 @@ export function FormSetup({ centros, medicos }: FormSetupProps) {
             <input
               name="nombre"
               required
-              placeholder="CESFAM Villa Los Aromos"
+              placeholder="Ej: Centro de Salud Villa Los Aromos"
               className={inputClass}
             />
           </div>

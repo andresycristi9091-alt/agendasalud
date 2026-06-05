@@ -20,7 +20,7 @@ export default async function NuevaCitaPage() {
           <a href="/dashboard/configuracion" className="underline font-medium">
             Ve a Configuración
           </a>{' '}
-          para registrar el CESFAM primero.
+          para registrar tu centro de salud primero.
         </div>
       )}
 
