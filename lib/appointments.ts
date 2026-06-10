@@ -4,6 +4,7 @@ import {
   createAppointment,
   isSlotTaken,
   getProfessionalBySlug,
+  getManagedUsers,
 } from './google/sheets'
 import { TIMEZONE, chileLocalDateTimeToISO } from './date'
 import { acquireLock, releaseLock, bookingLockKey } from './mutex'
@@ -38,6 +39,30 @@ export async function bookAppointment(input: AppointmentInput): Promise<BookingR
   }
 }
 
+export async function bookAppointmentForProfessional(
+  professional: Professional,
+  input: Omit<AppointmentInput, 'professionalSlug' | 'acceptTerms'>,
+): Promise<BookingResult> {
+  const lockKey = bookingLockKey(professional.id, input.date, input.startTime)
+  const locked = acquireLock(lockKey)
+  if (!locked) {
+    return {
+      success: false,
+      error: 'Ese horario esta siendo reservado ahora mismo. Intenta en unos segundos.',
+    }
+  }
+
+  try {
+    return await bookWithLock(professional, {
+      ...input,
+      professionalSlug: professional.slug,
+      acceptTerms: true,
+    })
+  } finally {
+    releaseLock(lockKey)
+  }
+}
+
 async function bookWithLock(
   professional: Professional,
   input: AppointmentInput,
@@ -65,9 +90,14 @@ async function bookWithLock(
     .filter(Boolean)
     .join('\n')
 
+  const centerUserEmail = professional.centerId
+    ? (await getManagedUsers()).find((user) => user.active && user.role === 'user' && user.centerId === professional.centerId)?.email
+    : ''
+
   const targetCalendarId =
     professional.calendarId ||
     professional.email ||
+    centerUserEmail ||
     process.env.GOOGLE_CALENDAR_ID ||
     ''
 

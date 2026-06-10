@@ -34,6 +34,25 @@ Ultimo foco implementado:
   3. Link del paciente.
   4. Calendar conectado.
 - Admin permite configurar correo, telefono, Calendar ID y duracion base del profesional.
+- Admin es el unico que asigna usuarios a centros.
+- Admin puede crear centros con datos extendidos:
+  - Direccion.
+  - Comuna/ciudad.
+  - Region.
+  - Telefono.
+  - Email.
+- Admin ve estadisticas por centro y por profesional/usuario:
+  - Pacientes hoy.
+  - Atendidos.
+  - No atendidos/no asiste.
+  - Pendientes.
+- Panel usuario permite crear citas manuales desde el dashboard. Estas se guardan en Sheets y se intentan crear en Google Calendar.
+- Panel usuario permite marcar citas como completadas, canceladas o no asiste.
+- Calendarizacion automatica:
+  - Primero usa `professional.calendarId`.
+  - Luego `professional.email`.
+  - Luego el correo del primer usuario operativo asignado al mismo centro.
+  - Finalmente `GOOGLE_CALENDAR_ID`.
 - La pagina publica de confirmacion usa `next/link` para navegacion interna y mantiene boton de Google Calendar para el paciente.
 - Disponibilidad profesional:
   - El selector de disponibilidad ya no usa solo lunes/martes/miercoles.
@@ -75,6 +94,8 @@ Para produccion sigue siendo recomendable definir:
 - `lib/auth/permissions.ts`
 - `lib/availability.ts`
 - `lib/validation.ts`
+- `app/api/dashboard/appointments/route.ts`
+- `components/admin/AdminWorkspace.tsx`
 
 ## Verificacion ejecutada
 
@@ -106,6 +127,10 @@ Contexto:
 - Para usar el calendario del correo del profesional, compartir ese Calendar con la service account de Google.
 - Hay un embudo visual en el panel cliente: perfil visible, agenda publicada, link paciente y Calendar conectado.
 - El panel cliente usa calendario visual para disponibilidad. Puede seleccionar fechas por dia, semana o mes y guardar bloques por fecha exacta. El backend acepta `dayOfWeek` como dia semanal legacy o como fecha `YYYY-MM-DD`.
+- Solo Admin debe crear/asignar usuarios a centros. Usuarios normales no ven configuracion de centros.
+- Admin maneja estadisticas por centro y por profesional.
+- Usuario normal maneja agenda diaria, disponibilidad, citas manuales y estados sin salir del panel.
+- Citas manuales usan `/api/dashboard/appointments` POST y pasan por `bookAppointmentForProfessional`.
 
 Prioridades siguientes:
 1. Probar flujo completo admin:
@@ -118,11 +143,15 @@ Prioridades siguientes:
    - Seleccionar una semana.
    - Seleccionar un mes.
    - Confirmar que el link publico muestra horas solo en esas fechas.
-3. Probar agendamiento real con un calendario compartido del profesional.
-4. Mejorar recuperacion/cambio de contrasena para usuarios internos.
-5. Agregar auditoria de acciones admin y cambios de agenda.
-6. Agregar pruebas basicas de APIs criticas.
-7. Mantener accesibilidad WCAG, mensajes claros y diseno HealthTech.
+3. Probar cita manual:
+   - Crear cita desde dashboard usuario.
+   - Confirmar registro en Sheets.
+   - Confirmar evento en Calendar del correo del usuario/centro.
+4. Probar agendamiento real con un calendario compartido del profesional.
+5. Mejorar recuperacion/cambio de contrasena para usuarios internos.
+6. Agregar auditoria de acciones admin y cambios de agenda.
+7. Agregar pruebas basicas de APIs criticas.
+8. Mantener accesibilidad WCAG, mensajes claros y diseno HealthTech.
 
 Antes de terminar:
 - Ejecuta npm run lint.

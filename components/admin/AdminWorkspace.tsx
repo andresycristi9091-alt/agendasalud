@@ -10,6 +10,11 @@ type HealthCenter = {
   slug: string
   description: string
   logoUrl: string
+  address: string
+  city: string
+  region: string
+  phone: string
+  email: string
   active: boolean
 }
 
@@ -39,12 +44,20 @@ type ManagedUser = {
   centerId?: string
 }
 
+type Appointment = {
+  id: string
+  professionalId: string
+  patientName: string
+  date: string
+  status: string
+}
+
 type Me = {
   isAdmin: boolean
   user: { email?: string } | null
 }
 
-const emptyCenter = { name: 'NeuroPlus', slug: 'neuroplus', description: '', logoUrl: '', active: true }
+const emptyCenter = { name: 'NeuroPlus', slug: 'neuroplus', description: '', logoUrl: '', address: '', city: '', region: '', phone: '', email: '', active: true }
 const emptyProfessional = {
   slug: '',
   name: '',
@@ -67,6 +80,8 @@ export function AdminWorkspace() {
   const [me, setMe] = useState<Me | null>(null)
   const [professionals, setProfessionals] = useState<Professional[]>([])
   const [users, setUsers] = useState<ManagedUser[]>([])
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [selectedStatsCenterId, setSelectedStatsCenterId] = useState('')
   const [selectedProfessionalId, setSelectedProfessionalId] = useState('')
   const [centerForm, setCenterForm] = useState(emptyCenter)
   const [professionalForm, setProfessionalForm] = useState(emptyProfessional)
@@ -89,6 +104,18 @@ export function AdminWorkspace() {
       })
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (professionals.length === 0) return
+    Promise.all(
+      professionals.map((professional) =>
+        fetch(`/api/dashboard/appointments?professionalId=${professional.id}`)
+          .then((response) => response.json())
+          .then((data) => data.appointments ?? [])
+          .catch(() => [])
+      )
+    ).then((groups) => setAppointments(groups.flat()))
+  }, [professionals])
 
   useEffect(() => {
     if (!selectedProfessional) {
@@ -118,6 +145,7 @@ export function AdminWorkspace() {
     const data = await response.json().catch(() => ({}))
     const loadedCenters = data.centers ?? []
     setCenters(loadedCenters)
+    setSelectedStatsCenterId((current) => current || loadedCenters[0]?.id || '')
     const neuroplus = loadedCenters.find((center: HealthCenter) => center.slug === 'neuroplus')
     if (neuroplus) {
       setUserForm((current) => current.centerId ? current : { ...current, centerId: neuroplus.id })
@@ -280,6 +308,15 @@ export function AdminWorkspace() {
             <form onSubmit={submitCenter} className="space-y-3">
               <input value={centerForm.name} onChange={(e) => setCenterForm((v) => ({ ...v, name: e.target.value, slug: slugify(e.target.value) }))} className={inputClass} placeholder="Nombre del centro" required />
               <input value={centerForm.slug} onChange={(e) => setCenterForm((v) => ({ ...v, slug: slugify(e.target.value) }))} className={inputClass} placeholder="slug-centro" required />
+              <input value={centerForm.address} onChange={(e) => setCenterForm((v) => ({ ...v, address: e.target.value }))} className={inputClass} placeholder="Direccion del centro" />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input value={centerForm.city} onChange={(e) => setCenterForm((v) => ({ ...v, city: e.target.value }))} className={inputClass} placeholder="Comuna / ciudad" />
+                <input value={centerForm.region} onChange={(e) => setCenterForm((v) => ({ ...v, region: e.target.value }))} className={inputClass} placeholder="Region" />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input value={centerForm.phone} onChange={(e) => setCenterForm((v) => ({ ...v, phone: e.target.value }))} className={inputClass} placeholder="Telefono" />
+                <input value={centerForm.email} onChange={(e) => setCenterForm((v) => ({ ...v, email: e.target.value }))} className={inputClass} placeholder="Correo centro" />
+              </div>
               <input value={centerForm.logoUrl} onChange={(e) => setCenterForm((v) => ({ ...v, logoUrl: e.target.value }))} className={inputClass} placeholder="URL logo opcional" />
               <textarea value={centerForm.description} onChange={(e) => setCenterForm((v) => ({ ...v, description: e.target.value }))} className={`${inputClass} min-h-24 py-3`} placeholder="Descripcion" />
               <button className="h-12 w-full rounded-2xl bg-blue-600 text-sm font-black text-white">Crear centro</button>
@@ -322,6 +359,8 @@ export function AdminWorkspace() {
                 <div key={center.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="font-black text-slate-950">{center.name}</p>
                   <p className="text-xs font-semibold text-slate-400">/{center.slug}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-500">{[center.address, center.city, center.region].filter(Boolean).join(', ') || 'Sin direccion'}</p>
+                  <p className="mt-1 text-xs text-slate-400">{[center.phone, center.email].filter(Boolean).join(' · ') || 'Sin contacto'}</p>
                   <p className="mt-2 text-sm text-slate-500">{center.description || 'Sin descripcion'}</p>
                 </div>
               ))}
@@ -388,6 +427,26 @@ export function AdminWorkspace() {
               ))}
             </div>
           </Panel>
+
+          <Panel title="Estadisticas por centro" eyebrow="Gestion">
+            <div className="mb-5">
+              <select value={selectedStatsCenterId} onChange={(e) => setSelectedStatsCenterId(e.target.value)} className={inputClass}>
+                {centers.map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}
+              </select>
+            </div>
+            <StatsGrid stats={buildCenterStats(selectedStatsCenterId, professionals, appointments)} />
+            <div className="mt-6">
+              <h3 className="mb-3 text-sm font-black text-slate-800">Estadisticas por usuario/profesional</h3>
+              <div className="space-y-3">
+                {professionals.filter((professional) => professional.centerId === selectedStatsCenterId).map((professional) => (
+                  <div key={professional.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="font-black text-slate-950">{professional.name}</p>
+                    <StatsGrid compact stats={buildProfessionalStats(professional.id, appointments)} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Panel>
         </div>
       </section>
 
@@ -410,6 +469,44 @@ function Panel({ title, eyebrow, children }: { title: string; eyebrow: string; c
   )
 }
 
+function StatsGrid({ stats, compact = false }: { stats: Array<{ label: string; value: string; help: string }>; compact?: boolean }) {
+  return (
+    <div className={`grid gap-3 ${compact ? 'mt-3 sm:grid-cols-4' : 'sm:grid-cols-2 lg:grid-cols-4'}`}>
+      {stats.map((stat) => (
+        <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white p-4">
+          <p className="text-xs font-bold text-slate-500">{stat.label}</p>
+          <p className="mt-1 text-2xl font-black text-slate-950">{stat.value}</p>
+          <p className="mt-1 text-xs text-slate-400">{stat.help}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function buildCenterStats(centerId: string, professionals: Professional[], appointments: Appointment[]) {
+  const professionalIds = new Set(professionals.filter((professional) => professional.centerId === centerId).map((professional) => professional.id))
+  return buildStats(appointments.filter((appointment) => professionalIds.has(appointment.professionalId)))
+}
+
+function buildProfessionalStats(professionalId: string, appointments: Appointment[]) {
+  return buildStats(appointments.filter((appointment) => appointment.professionalId === professionalId))
+}
+
+function buildStats(appointments: Appointment[]) {
+  const today = getTodayISO()
+  const todayAppointments = appointments.filter((appointment) => appointment.date === today)
+  const completed = appointments.filter((appointment) => appointment.status === 'completada')
+  const noShow = appointments.filter((appointment) => appointment.status === 'no_asiste')
+  const pending = appointments.filter((appointment) => appointment.status === 'confirmada')
+
+  return [
+    { label: 'Pacientes hoy', value: String(todayAppointments.length), help: 'Agendados para la fecha actual.' },
+    { label: 'Atendidos', value: String(completed.length), help: 'Marcados como completados.' },
+    { label: 'No atendidos', value: String(noShow.length), help: 'Marcados como no asiste.' },
+    { label: 'Pendientes', value: String(pending.length), help: 'Confirmados por gestionar.' },
+  ]
+}
+
 function Avatar({ professional }: { professional: Professional }) {
   if (professional.photoUrl) {
     return <img src={professional.photoUrl} alt={professional.name} className="h-14 w-14 rounded-2xl object-cover" />
@@ -427,3 +524,12 @@ function slugify(value: string) {
 
 const inputClass =
   'h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10'
+
+function getTodayISO() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}

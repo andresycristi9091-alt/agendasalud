@@ -78,7 +78,27 @@ export const AdminCenterSchema = z.object({
   slug: z.string().min(2).max(80).regex(/^[a-z0-9-]+$/),
   description: z.string().max(500).optional().default(''),
   logoUrl: z.string().url().optional().or(z.literal('')).default(''),
+  address: z.string().max(180).optional().default(''),
+  city: z.string().max(100).optional().default(''),
+  region: z.string().max(100).optional().default(''),
+  phone: z.string().max(30).optional().default(''),
+  email: z.string().email().optional().or(z.literal('')).default(''),
   active: z.boolean().default(true),
+})
+
+export const ManualAppointmentSchema = z.object({
+  professionalId: z.string().min(1),
+  patientName: z.string().min(2).max(100),
+  patientEmail: z.string().email().max(254),
+  patientPhone: z.string().min(8).max(20),
+  patientRut: z.string().max(12).optional().default(''),
+  reason: z.string().max(300).optional().default(''),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/),
+}).refine((data) => data.startTime < data.endTime, {
+  message: 'La hora de inicio debe ser anterior a la hora de termino',
+  path: ['endTime'],
 })
 
 export type AppointmentInput  = z.infer<typeof AppointmentSchema>
@@ -88,3 +108,4 @@ export type AdminProfessionalInput = z.infer<typeof AdminProfessionalSchema>
 export type AdminUserCreateInput = z.infer<typeof AdminUserCreateSchema>
 export type AdminUserUpdateInput = z.infer<typeof AdminUserUpdateSchema>
 export type AdminCenterInput = z.infer<typeof AdminCenterSchema>
+export type ManualAppointmentInput = z.infer<typeof ManualAppointmentSchema>

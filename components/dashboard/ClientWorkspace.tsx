@@ -41,7 +41,7 @@ type Professional = {
 
 type Me = {
   isAdmin: boolean
-  user: { centerId?: string } | null
+  user: { email?: string; centerId?: string } | null
 }
 
 const DAYS = [
@@ -69,6 +69,17 @@ const emptyProfileForm = {
   appointmentDurationDefault: 30,
 }
 
+const emptyManualForm = {
+  patientName: '',
+  patientEmail: '',
+  patientPhone: '',
+  patientRut: '',
+  reason: '',
+  date: getTodayISO(),
+  startTime: '09:00',
+  endTime: '09:30',
+}
+
 export function ClientWorkspace() {
   const [professionals, setProfessionals] = useState<Professional[]>([])
   const [me, setMe] = useState<Me | null>(null)
@@ -90,6 +101,7 @@ export function ClientWorkspace() {
   const [endTime, setEndTime] = useState('13:00')
   const [duration, setDuration] = useState(30)
   const [profileForm, setProfileForm] = useState(emptyProfileForm)
+  const [manualForm, setManualForm] = useState(emptyManualForm)
 
   const selectedProfessional = professionals.find((professional) => professional.id === selectedProfessionalId)
   const appOrigin = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL ?? '')
@@ -126,7 +138,7 @@ export function ClientWorkspace() {
         const loaded = professionalsData.professionals ?? []
         setProfessionals(loaded)
         setSelectedProfessionalId(loaded[0]?.id ?? '')
-        if (loaded[0]) setProfileForm(buildProfileForm(loaded[0]))
+        if (loaded[0]) setProfileForm(buildProfileForm(loaded[0], meData?.user?.email))
       })
       .finally(() => setLoading(false))
   }, [])
@@ -351,7 +363,7 @@ export function ClientWorkspace() {
                   const nextId = event.target.value
                   setSelectedProfessionalId(nextId)
                   const nextProfessional = professionals.find((professional) => professional.id === nextId)
-                  setProfileForm(nextProfessional ? buildProfileForm(nextProfessional) : emptyProfileForm)
+                  setProfileForm(nextProfessional ? buildProfileForm(nextProfessional, me?.user?.email) : emptyProfileForm)
                   setDuration(Number(nextProfessional?.appointmentDurationDefault || 30))
                 }}
                 className={inputClass}
@@ -537,12 +549,50 @@ export function ClientWorkspace() {
                   ))}
                 </div>
               </div>
+
+              <div className="xl:col-span-2">
+                <ManualAppointmentForm
+                  form={manualForm}
+                  disabled={!selectedProfessionalId}
+                  onChange={setManualForm}
+                  onSubmit={createManualAppointment}
+                />
+              </div>
             </div>
           )}
         </div>
       </section>
     </div>
   )
+
+  function createManualAppointment(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selectedProfessionalId) return
+
+    setMessage(null)
+    startTransition(async () => {
+      const response = await fetch('/api/dashboard/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          professionalId: selectedProfessionalId,
+          ...manualForm,
+        }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        setMessageTone('error')
+        setMessage(data.error ?? 'No pudimos crear la cita manual.')
+        return
+      }
+
+      setMessageTone('info')
+      setMessage('Cita manual creada y enviada al calendario del profesional.')
+      setManualForm(emptyManualForm)
+      await refreshData()
+    })
+  }
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -725,7 +775,49 @@ function AppointmentRow({ appointment, onUpdate }: { appointment: Appointment; o
         <button type="button" onClick={() => onUpdate(appointment.id, 'cancelada')} className="text-xs font-black text-red-600 hover:text-red-700">
           Cancelar
         </button>
+        <button type="button" onClick={() => onUpdate(appointment.id, 'no_asiste')} className="text-xs font-black text-amber-700 hover:text-amber-800">
+          No asiste
+        </button>
       </div>
+    </div>
+  )
+}
+
+function ManualAppointmentForm({
+  form,
+  disabled,
+  onChange,
+  onSubmit,
+}: {
+  form: typeof emptyManualForm
+  disabled: boolean
+  onChange: React.Dispatch<React.SetStateAction<typeof emptyManualForm>>
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void
+}) {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+      <div className="mb-4">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Agendamiento manual</p>
+        <h3 className="mt-2 text-xl font-black text-slate-950">Crear cita interna</h3>
+        <p className="mt-1 text-sm leading-6 text-slate-500">
+          Registra una hora tomada por telefono, WhatsApp o recepcion. Tambien se enviara al Calendar del profesional.
+        </p>
+      </div>
+      <form onSubmit={onSubmit} className="grid gap-3 md:grid-cols-2">
+        <input value={form.patientName} onChange={(event) => onChange((current) => ({ ...current, patientName: event.target.value }))} className={inputClass} placeholder="Nombre paciente" required />
+        <input value={form.patientEmail} onChange={(event) => onChange((current) => ({ ...current, patientEmail: event.target.value }))} className={inputClass} placeholder="Correo paciente" type="email" required />
+        <input value={form.patientPhone} onChange={(event) => onChange((current) => ({ ...current, patientPhone: event.target.value }))} className={inputClass} placeholder="Telefono paciente" required />
+        <input value={form.patientRut} onChange={(event) => onChange((current) => ({ ...current, patientRut: event.target.value }))} className={inputClass} placeholder="RUT opcional" />
+        <input value={form.date} onChange={(event) => onChange((current) => ({ ...current, date: event.target.value }))} className={inputClass} type="date" required />
+        <div className="grid grid-cols-2 gap-3">
+          <input value={form.startTime} onChange={(event) => onChange((current) => ({ ...current, startTime: event.target.value }))} className={inputClass} type="time" required />
+          <input value={form.endTime} onChange={(event) => onChange((current) => ({ ...current, endTime: event.target.value }))} className={inputClass} type="time" required />
+        </div>
+        <textarea value={form.reason} onChange={(event) => onChange((current) => ({ ...current, reason: event.target.value }))} className={`${inputClass} min-h-24 py-3 md:col-span-2`} placeholder="Motivo breve opcional" />
+        <button disabled={disabled} className="h-12 rounded-2xl bg-slate-950 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:opacity-50 md:col-span-2">
+          Crear cita manual
+        </button>
+      </form>
     </div>
   )
 }
@@ -776,10 +868,13 @@ function buildMetrics(appointments: Appointment[], availability: AvailabilityBlo
 
   const todayAppointments = appointments.filter((appointment) => appointment.date === today)
   const confirmed = appointments.filter((appointment) => appointment.status === 'confirmada')
+  const completed = appointments.filter((appointment) => appointment.status === 'completada')
+  const noShow = appointments.filter((appointment) => appointment.status === 'no_asiste')
 
   return [
     { label: 'Citas hoy', value: String(todayAppointments.length), help: 'Reservas activas para la jornada.' },
-    { label: 'Citas totales', value: String(appointments.length), help: 'Registros capturados desde el link publico.' },
+    { label: 'Atendidos', value: String(completed.length), help: 'Marcados como completados.' },
+    { label: 'No atendidos', value: String(noShow.length), help: 'Pacientes no presentados.' },
     { label: 'Pendientes', value: String(confirmed.length), help: 'Citas confirmadas por atender.' },
     { label: 'Bloques activos', value: String(availability.length), help: 'Horarios publicados semanalmente.' },
   ]
@@ -788,12 +883,12 @@ function buildMetrics(appointments: Appointment[], availability: AvailabilityBlo
 const inputClass =
   'h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10'
 
-function buildProfileForm(professional: Professional) {
+function buildProfileForm(professional: Professional, fallbackEmail = '') {
   return {
     specialty: professional.specialty ?? '',
     professionalType: professional.professionalType ?? '',
     photoUrl: professional.photoUrl ?? '',
-    email: professional.email ?? '',
+    email: professional.email || fallbackEmail,
     phone: professional.phone ?? '',
     calendarId: professional.calendarId ?? '',
     publicDescription: professional.publicDescription ?? '',

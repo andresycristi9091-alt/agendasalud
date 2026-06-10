@@ -46,6 +46,11 @@ export type HealthCenter = {
   slug: string
   description: string
   logoUrl: string
+  address: string
+  city: string
+  region: string
+  phone: string
+  email: string
   active: boolean
   createdAt: string
   updatedAt: string
@@ -275,14 +280,19 @@ function rowToCenter(headers: string[], row: string[]): HealthCenter {
     slug: row[2] ?? mapped.slug ?? '',
     description: row[3] ?? mapped.description ?? '',
     logoUrl: row[4] ?? mapped.logoUrl ?? '',
-    active: String(row[5] ?? mapped.active ?? 'TRUE').toUpperCase() === 'TRUE',
-    createdAt: row[6] ?? mapped.createdAt ?? '',
-    updatedAt: row[7] ?? mapped.updatedAt ?? '',
+    address: row[5] ?? mapped.address ?? '',
+    city: row[6] ?? mapped.city ?? '',
+    region: row[7] ?? mapped.region ?? '',
+    phone: row[8] ?? mapped.phone ?? '',
+    email: row[9] ?? mapped.email ?? '',
+    active: String(row[10] ?? mapped.active ?? 'TRUE').toUpperCase() === 'TRUE',
+    createdAt: row[11] ?? mapped.createdAt ?? '',
+    updatedAt: row[12] ?? mapped.updatedAt ?? '',
   }
 }
 
 export async function getAllCenters(): Promise<HealthCenter[]> {
-  const rows = await getSheetData('centers!A:H').catch(() => [])
+  const rows = await getSheetData('centers!A:M').catch(() => [])
   if (rows.length < 2) return []
   const headers = rows[0]
   return rows.slice(1).filter((r) => r[0]).map((row) => rowToCenter(headers, row))
@@ -299,6 +309,11 @@ export async function ensureDefaultCenter(): Promise<HealthCenter> {
     slug: 'neuroplus',
     description: 'Centro NeuroPlus',
     logoUrl: '',
+    address: '',
+    city: '',
+    region: '',
+    phone: '',
+    email: '',
     active: true,
   }
 
@@ -307,14 +322,19 @@ export async function ensureDefaultCenter(): Promise<HealthCenter> {
 }
 
 export async function createCenter(data: Omit<HealthCenter, 'createdAt' | 'updatedAt'>): Promise<void> {
-  await ensureSheet('centers', ['id', 'name', 'slug', 'description', 'logoUrl', 'active', 'createdAt', 'updatedAt'])
+  await ensureSheet('centers', ['id', 'name', 'slug', 'description', 'logoUrl', 'address', 'city', 'region', 'phone', 'email', 'active', 'createdAt', 'updatedAt'])
   const now = new Date().toISOString()
-  await appendRow('centers!A:H', [
+  await appendRow('centers!A:M', [
     data.id,
     data.name,
     data.slug,
     data.description,
     data.logoUrl,
+    data.address,
+    data.city,
+    data.region,
+    data.phone,
+    data.email,
     data.active ? 'TRUE' : 'FALSE',
     now,
     now,
@@ -322,7 +342,7 @@ export async function createCenter(data: Omit<HealthCenter, 'createdAt' | 'updat
 }
 
 export async function updateCenter(id: string, data: Partial<HealthCenter>): Promise<void> {
-  const rows = await getSheetData('centers!A:H')
+  const rows = await getSheetData('centers!A:M')
   const rowIndex = rows.findIndex((row, index) => index > 0 && row[0] === id)
   if (rowIndex === -1) throw new Error('Centro no encontrado')
 
@@ -331,7 +351,7 @@ export async function updateCenter(id: string, data: Partial<HealthCenter>): Pro
   const sheets = getSheetsClient()
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
-    range: `centers!A${rowIndex + 1}:H${rowIndex + 1}`,
+    range: `centers!A${rowIndex + 1}:M${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: {
       values: [[
@@ -340,6 +360,11 @@ export async function updateCenter(id: string, data: Partial<HealthCenter>): Pro
         updated.slug,
         updated.description,
         updated.logoUrl,
+        updated.address,
+        updated.city,
+        updated.region,
+        updated.phone,
+        updated.email,
         updated.active ? 'TRUE' : 'FALSE',
         updated.createdAt,
         updated.updatedAt,
