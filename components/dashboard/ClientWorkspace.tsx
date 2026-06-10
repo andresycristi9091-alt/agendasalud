@@ -31,6 +31,11 @@ type Professional = {
   specialty: string
   professionalType: string
   photoUrl: string
+  email: string
+  phone: string
+  calendarId: string
+  publicDescription: string
+  appointmentDurationDefault: number
   centerId?: string
 }
 
@@ -49,7 +54,17 @@ const DAYS = [
   { key: 'sunday', label: 'Domingo' },
 ]
 
-const DURATIONS = [15, 20, 30, 45, 60]
+const DURATIONS = [10, 15, 30, 45, 60]
+const emptyProfileForm = {
+  specialty: '',
+  professionalType: '',
+  photoUrl: '',
+  email: '',
+  phone: '',
+  calendarId: '',
+  publicDescription: '',
+  appointmentDurationDefault: 30,
+}
 
 export function ClientWorkspace() {
   const [professionals, setProfessionals] = useState<Professional[]>([])
@@ -62,11 +77,13 @@ export function ClientWorkspace() {
   const [message, setMessage] = useState<string | null>(null)
   const [messageTone, setMessageTone] = useState<'info' | 'error'>('info')
   const [isPending, startTransition] = useTransition()
+  const [profilePending, startProfileTransition] = useTransition()
 
   const [day, setDay] = useState('monday')
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('13:00')
   const [duration, setDuration] = useState(30)
+  const [profileForm, setProfileForm] = useState(emptyProfileForm)
 
   const selectedProfessional = professionals.find((professional) => professional.id === selectedProfessionalId)
   const publicLink = selectedProfessional
@@ -102,6 +119,7 @@ export function ClientWorkspace() {
         const loaded = professionalsData.professionals ?? []
         setProfessionals(loaded)
         setSelectedProfessionalId(loaded[0]?.id ?? '')
+        if (loaded[0]) setProfileForm(buildProfileForm(loaded[0]))
       })
       .finally(() => setLoading(false))
   }, [])
@@ -155,6 +173,40 @@ export function ClientWorkspace() {
       setMessageTone('info')
       setMessage('Horario publicado. Ya puede aparecer en el link publico del paciente.')
       await refreshData()
+    })
+  }
+
+  function updateProfessionalProfile(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selectedProfessionalId) return
+
+    setMessage(null)
+    startProfileTransition(async () => {
+      const response = await fetch('/api/dashboard/professionals', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          professionalId: selectedProfessionalId,
+          ...profileForm,
+        }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        setMessageTone('error')
+        setMessage(data.error ?? 'No pudimos guardar los datos del profesional.')
+        return
+      }
+
+      setProfessionals((current) =>
+        current.map((professional) =>
+          professional.id === selectedProfessionalId
+            ? { ...professional, ...profileForm }
+            : professional
+        )
+      )
+      setMessageTone('info')
+      setMessage('Perfil del profesional actualizado. Los pacientes veran estos cambios en el link publico.')
     })
   }
 
@@ -231,7 +283,13 @@ export function ClientWorkspace() {
               <span className="mb-2 block text-sm font-black text-slate-800">Profesional</span>
               <select
                 value={selectedProfessionalId}
-                onChange={(event) => setSelectedProfessionalId(event.target.value)}
+                onChange={(event) => {
+                  const nextId = event.target.value
+                  setSelectedProfessionalId(nextId)
+                  const nextProfessional = professionals.find((professional) => professional.id === nextId)
+                  setProfileForm(nextProfessional ? buildProfileForm(nextProfessional) : emptyProfileForm)
+                  setDuration(Number(nextProfessional?.appointmentDurationDefault || 30))
+                }}
                 className={inputClass}
                 disabled={professionals.length === 0}
               >
@@ -254,6 +312,48 @@ export function ClientWorkspace() {
               Tu cuenta aun no tiene profesionales asignados. Solicita al administrador que asocie tu usuario a un centro activo.
             </div>
           )}
+
+          <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-4">
+            <div className="mb-5">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Perfil publico</p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Datos visibles para pacientes</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Ajusta especialidad, foto, descripcion, calendario y duracion base de la atencion.
+              </p>
+            </div>
+
+            <form onSubmit={updateProfessionalProfile} className="space-y-4">
+              <Field label="Tipo de profesional">
+                <input value={profileForm.professionalType} onChange={(event) => setProfileForm((current) => ({ ...current, professionalType: event.target.value }))} className={inputClass} placeholder="Ej: Neurologo, Psicologa" />
+              </Field>
+              <Field label="Especialidad">
+                <input value={profileForm.specialty} onChange={(event) => setProfileForm((current) => ({ ...current, specialty: event.target.value }))} className={inputClass} placeholder="Especialidad" required />
+              </Field>
+              <Field label="URL fotografia">
+                <input value={profileForm.photoUrl} onChange={(event) => setProfileForm((current) => ({ ...current, photoUrl: event.target.value }))} className={inputClass} placeholder="https://..." />
+              </Field>
+              <Field label="Google Calendar ID">
+                <input value={profileForm.calendarId} onChange={(event) => setProfileForm((current) => ({ ...current, calendarId: event.target.value }))} className={inputClass} placeholder="calendar@group.calendar.google.com" />
+              </Field>
+              <Field label="Duracion base de atencion">
+                <select value={profileForm.appointmentDurationDefault} onChange={(event) => setProfileForm((current) => ({ ...current, appointmentDurationDefault: Number(event.target.value) }))} className={inputClass}>
+                  {DURATIONS.map((minutes) => (
+                    <option key={minutes} value={minutes}>{minutes === 60 ? '1 hora' : `${minutes} minutos`}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Descripcion publica">
+                <textarea value={profileForm.publicDescription} onChange={(event) => setProfileForm((current) => ({ ...current, publicDescription: event.target.value }))} className={`${inputClass} min-h-24 py-3`} placeholder="Breve descripcion para pacientes" />
+              </Field>
+              <button
+                type="submit"
+                disabled={profilePending || professionals.length === 0}
+                className="h-13 w-full rounded-2xl bg-slate-950 px-5 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:opacity-50"
+              >
+                {profilePending ? 'Guardando...' : 'Guardar perfil visible'}
+              </button>
+            </form>
+          </div>
 
           <div className="mb-5">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Publicar disponibilidad</p>
@@ -284,7 +384,7 @@ export function ClientWorkspace() {
             <Field label="Duracion por cita">
               <select value={duration} onChange={(event) => setDuration(Number(event.target.value))} className={inputClass}>
                 {DURATIONS.map((minutes) => (
-                  <option key={minutes} value={minutes}>{minutes} minutos</option>
+                  <option key={minutes} value={minutes}>{minutes === 60 ? '1 hora' : `${minutes} minutos`}</option>
                 ))}
               </select>
             </Field>
@@ -443,3 +543,16 @@ function buildMetrics(appointments: Appointment[], availability: AvailabilityBlo
 
 const inputClass =
   'h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10'
+
+function buildProfileForm(professional: Professional) {
+  return {
+    specialty: professional.specialty ?? '',
+    professionalType: professional.professionalType ?? '',
+    photoUrl: professional.photoUrl ?? '',
+    email: professional.email ?? '',
+    phone: professional.phone ?? '',
+    calendarId: professional.calendarId ?? '',
+    publicDescription: professional.publicDescription ?? '',
+    appointmentDurationDefault: Number(professional.appointmentDurationDefault || 30),
+  }
+}

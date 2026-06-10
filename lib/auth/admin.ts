@@ -14,16 +14,16 @@ export async function getCurrentUserRole() {
   if (localAdminSession) {
     return {
       user: {
-        id: 'local-admin',
-        email: LOCAL_ADMIN_EMAIL,
+        id: localAdminSession.email === LOCAL_ADMIN_EMAIL ? 'local-admin' : `local-${localAdminSession.email}`,
+        email: localAdminSession.email,
         user_metadata: {
-          name: 'Administrador AgendaSalud',
-          role: 'admin',
-          centerId: '',
+          name: localAdminSession.name || (localAdminSession.email === LOCAL_ADMIN_EMAIL ? 'Administrador AgendaSalud' : ''),
+          role: localAdminSession.role,
+          centerId: localAdminSession.centerId || '',
         },
       },
-      role: 'admin' as const,
-      isAdmin: true,
+      role: localAdminSession.role,
+      isAdmin: localAdminSession.role === 'admin',
     }
   }
 

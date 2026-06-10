@@ -136,7 +136,7 @@ export function AdminWorkspace() {
     const response = await fetch('/api/admin/users')
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {
-      setUserMessage(data.error ?? 'No se pudieron cargar usuarios. Revisa SUPABASE_SERVICE_ROLE_KEY.')
+      setUserMessage(data.error ?? 'No se pudieron cargar usuarios.')
       return
     }
     setUsers(data.users ?? [])

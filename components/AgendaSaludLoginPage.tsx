@@ -50,6 +50,18 @@ export default function AgendaSaludLoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password })
 
     if (error) {
+      const internalLogin = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail, password }),
+      })
+
+      if (internalLogin.ok) {
+        router.push('/dashboard')
+        router.refresh()
+        return
+      }
+
       setError('Correo o contraseña incorrectos. Verifica tus credenciales.')
       setLoading(false)
       return

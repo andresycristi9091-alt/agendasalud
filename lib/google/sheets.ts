@@ -51,6 +51,18 @@ export type HealthCenter = {
   updatedAt: string
 }
 
+export type ManagedUser = {
+  id: string
+  email: string
+  name: string
+  passwordHash: string
+  role: 'admin' | 'user'
+  centerId: string
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export type Availability = {
   id:           string
   professionalId: string
@@ -276,6 +288,24 @@ export async function getAllCenters(): Promise<HealthCenter[]> {
   return rows.slice(1).filter((r) => r[0]).map((row) => rowToCenter(headers, row))
 }
 
+export async function ensureDefaultCenter(): Promise<HealthCenter> {
+  const centers = await getAllCenters()
+  const existing = centers.find((center) => center.slug === 'neuroplus')
+  if (existing) return existing
+
+  const center = {
+    id: 'center-neuroplus',
+    name: 'NeuroPlus',
+    slug: 'neuroplus',
+    description: 'Centro NeuroPlus',
+    logoUrl: '',
+    active: true,
+  }
+
+  await createCenter(center)
+  return { ...center, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+}
+
 export async function createCenter(data: Omit<HealthCenter, 'createdAt' | 'updatedAt'>): Promise<void> {
   await ensureSheet('centers', ['id', 'name', 'slug', 'description', 'logoUrl', 'active', 'createdAt', 'updatedAt'])
   const now = new Date().toISOString()
@@ -316,6 +346,81 @@ export async function updateCenter(id: string, data: Partial<HealthCenter>): Pro
       ]],
     },
   })
+}
+
+function rowToManagedUser(headers: string[], row: string[]): ManagedUser {
+  const mapped = rowToObject<Partial<ManagedUser>>(headers, row)
+  return {
+    id: row[0] ?? mapped.id ?? '',
+    email: row[1] ?? mapped.email ?? '',
+    name: row[2] ?? mapped.name ?? '',
+    passwordHash: row[3] ?? mapped.passwordHash ?? '',
+    role: ((row[4] ?? mapped.role ?? 'user') === 'admin' ? 'admin' : 'user'),
+    centerId: row[5] ?? mapped.centerId ?? '',
+    active: String(row[6] ?? mapped.active ?? 'TRUE').toUpperCase() === 'TRUE',
+    createdAt: row[7] ?? mapped.createdAt ?? '',
+    updatedAt: row[8] ?? mapped.updatedAt ?? '',
+  }
+}
+
+export async function getManagedUsers(): Promise<ManagedUser[]> {
+  await ensureSheet('users', ['id', 'email', 'name', 'passwordHash', 'role', 'centerId', 'active', 'createdAt', 'updatedAt'])
+  const rows = await getSheetData('users!A:I')
+  if (rows.length < 2) return []
+  const headers = rows[0]
+  return rows.slice(1).filter((row) => row[0]).map((row) => rowToManagedUser(headers, row))
+}
+
+export async function getManagedUserByEmail(email: string): Promise<ManagedUser | null> {
+  const users = await getManagedUsers()
+  return users.find((user) => user.email.toLowerCase() === email.toLowerCase() && user.active) ?? null
+}
+
+export async function createManagedUser(data: Omit<ManagedUser, 'createdAt' | 'updatedAt'>): Promise<ManagedUser> {
+  await ensureSheet('users', ['id', 'email', 'name', 'passwordHash', 'role', 'centerId', 'active', 'createdAt', 'updatedAt'])
+  const now = new Date().toISOString()
+  const user = { ...data, createdAt: now, updatedAt: now }
+  await appendRow('users!A:I', [
+    user.id,
+    user.email,
+    user.name,
+    user.passwordHash,
+    user.role,
+    user.centerId,
+    user.active ? 'TRUE' : 'FALSE',
+    user.createdAt,
+    user.updatedAt,
+  ])
+  return user
+}
+
+export async function updateManagedUser(id: string, data: Partial<ManagedUser>): Promise<ManagedUser> {
+  const rows = await getSheetData('users!A:I')
+  const rowIndex = rows.findIndex((row, index) => index > 0 && row[0] === id)
+  if (rowIndex === -1) throw new Error('Usuario no encontrado')
+
+  const current = rowToManagedUser(rows[0], rows[rowIndex])
+  const updated: ManagedUser = { ...current, ...data, id: current.id, updatedAt: new Date().toISOString() }
+  const sheets = getSheetsClient()
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEET_ID,
+    range: `users!A${rowIndex + 1}:I${rowIndex + 1}`,
+    valueInputOption: 'RAW',
+    requestBody: {
+      values: [[
+        updated.id,
+        updated.email,
+        updated.name,
+        updated.passwordHash,
+        updated.role,
+        updated.centerId,
+        updated.active ? 'TRUE' : 'FALSE',
+        updated.createdAt,
+        updated.updatedAt,
+      ]],
+    },
+  })
+  return updated
 }
 
 // â”€â”€ Availability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

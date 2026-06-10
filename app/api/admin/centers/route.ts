@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
 import { requireAdmin } from '@/lib/auth/admin'
 import { AdminCenterSchema } from '@/lib/validation'
-import { createCenter, getAllCenters } from '@/lib/google/sheets'
+import { createCenter, ensureDefaultCenter, getAllCenters } from '@/lib/google/sheets'
 
 export async function GET() {
   try {
     await requireAdmin()
+    await ensureDefaultCenter()
     const centers = await getAllCenters()
     return NextResponse.json({ centers })
   } catch (error) {

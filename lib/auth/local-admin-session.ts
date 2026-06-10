@@ -7,7 +7,9 @@ const SESSION_TTL_SECONDS = 60 * 60 * 8
 
 type LocalAdminPayload = {
   email: string
-  role: 'admin'
+  role: 'admin' | 'user'
+  name?: string
+  centerId?: string
   iat: number
   exp: number
 }
@@ -53,11 +55,13 @@ async function sign(payload: string) {
   return bytesToBase64url(new Uint8Array(signature))
 }
 
-async function createSessionValue() {
+async function createSessionValue(input?: { email?: string; role?: 'admin' | 'user'; name?: string; centerId?: string }) {
   const now = Math.floor(Date.now() / 1000)
   const payload = textToBase64url(JSON.stringify({
-    email: LOCAL_ADMIN_EMAIL,
-    role: 'admin',
+    email: input?.email ?? LOCAL_ADMIN_EMAIL,
+    role: input?.role ?? 'admin',
+    name: input?.name ?? '',
+    centerId: input?.centerId ?? '',
     iat: now,
     exp: now + SESSION_TTL_SECONDS,
   } satisfies LocalAdminPayload))
@@ -67,6 +71,19 @@ async function createSessionValue() {
 
 export async function setLocalAdminSession(response: NextResponse) {
   response.cookies.set(COOKIE_NAME, await createSessionValue(), {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: true,
+    path: '/',
+    maxAge: SESSION_TTL_SECONDS,
+  })
+}
+
+export async function setLocalUserSession(
+  response: NextResponse,
+  user: { email: string; role: 'admin' | 'user'; name?: string; centerId?: string }
+) {
+  response.cookies.set(COOKIE_NAME, await createSessionValue(user), {
     httpOnly: true,
     sameSite: 'lax',
     secure: true,
@@ -95,7 +112,7 @@ async function verifySessionValue(value?: string): Promise<LocalAdminPayload | n
     const parsed = JSON.parse(base64urlToText(payload)) as LocalAdminPayload
     const now = Math.floor(Date.now() / 1000)
 
-    if (parsed.email !== LOCAL_ADMIN_EMAIL || parsed.role !== 'admin' || parsed.exp < now) return null
+    if (!parsed.email || !['admin', 'user'].includes(parsed.role) || parsed.exp < now) return null
     return parsed
   } catch {
     return null
