@@ -1,5 +1,6 @@
 import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { getLocalAdminSession, LOCAL_ADMIN_EMAIL } from '@/lib/auth/local-admin-session'
 
 const FALLBACK_ADMIN_EMAILS = ['andresycristi9091@gmail.com', 'admin@agendasalud.cl']
 
@@ -9,6 +10,23 @@ export function getAdminEmails() {
 }
 
 export async function getCurrentUserRole() {
+  const localAdminSession = await getLocalAdminSession()
+  if (localAdminSession) {
+    return {
+      user: {
+        id: 'local-admin',
+        email: LOCAL_ADMIN_EMAIL,
+        user_metadata: {
+          name: 'Administrador AgendaSalud',
+          role: 'admin',
+          centerId: '',
+        },
+      },
+      role: 'admin' as const,
+      isAdmin: true,
+    }
+  }
+
   const supabase = await createClient()
   const {
     data: { user },

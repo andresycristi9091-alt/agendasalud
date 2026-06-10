@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Logo } from '@/components/ui/Logo'
@@ -10,14 +9,8 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+  const { user, isAdmin } = await getCurrentUserRole()
   if (!user) redirect('/login')
-
-  const { isAdmin } = await getCurrentUserRole()
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/auth/admin'
+import { setLocalAdminSession } from '@/lib/auth/local-admin-session'
 
 const ADMIN_EMAIL = 'admin@agendasalud.cl'
 
@@ -8,6 +9,15 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}))
     if (!['admin', ADMIN_EMAIL].includes(String(body.username).toLowerCase()) || body.password !== 'admin') {
       return NextResponse.json({ error: 'Credenciales invalidas' }, { status: 401 })
+    }
+
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const response = NextResponse.json({
+        email: ADMIN_EMAIL,
+        fallbackSession: true,
+      })
+      await setLocalAdminSession(response)
+      return response
     }
 
     const supabase = createAdminSupabaseClient()

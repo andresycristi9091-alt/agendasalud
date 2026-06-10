@@ -28,8 +28,14 @@ export default function AgendaSaludLoginPage() {
       const data = await bootstrap.json().catch(() => null)
 
       if (!bootstrap.ok || !data?.email) {
-        setError('No se pudo preparar el usuario admin. Revisa SUPABASE_SERVICE_ROLE_KEY en Vercel.')
+        setError('No se pudo iniciar el acceso administrador. Intenta nuevamente.')
         setLoading(false)
+        return
+      }
+
+      if (data.fallbackSession) {
+        router.push('/dashboard')
+        router.refresh()
         return
       }
 
