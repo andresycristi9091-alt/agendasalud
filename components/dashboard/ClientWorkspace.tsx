@@ -54,7 +54,10 @@ const DAYS = [
   { key: 'sunday', label: 'Domingo' },
 ]
 
+const WEEKDAYS_SHORT = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
 const DURATIONS = [10, 15, 30, 45, 60]
+type SelectionMode = 'day' | 'week' | 'month'
+
 const emptyProfileForm = {
   specialty: '',
   professionalType: '',
@@ -80,7 +83,9 @@ export function ClientWorkspace() {
   const [profilePending, startProfileTransition] = useTransition()
 
   const [showAllAppointments, setShowAllAppointments] = useState(false)
-  const [day, setDay] = useState('monday')
+  const [selectionMode, setSelectionMode] = useState<SelectionMode>('day')
+  const [calendarMonth, setCalendarMonth] = useState(() => firstDayOfMonth(getTodayISO()))
+  const [selectedDates, setSelectedDates] = useState<string[]>(() => [getTodayISO()])
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('13:00')
   const [duration, setDuration] = useState(30)
@@ -153,27 +158,35 @@ export function ClientWorkspace() {
         return
       }
 
-      const response = await fetch('/api/dashboard/availability', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          professionalId: selectedProfessionalId,
-          dayOfWeek: day,
-          startTime,
-          endTime,
-          slotDuration: duration,
-        }),
-      })
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => null)
+      if (selectedDates.length === 0) {
         setMessageTone('error')
-        setMessage(data?.error ?? 'No pudimos guardar este bloque. Revisa las horas e intenta nuevamente.')
+        setMessage('Selecciona al menos una fecha en el calendario.')
         return
       }
 
+      for (const date of selectedDates) {
+        const response = await fetch('/api/dashboard/availability', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            professionalId: selectedProfessionalId,
+            dayOfWeek: date,
+            startTime,
+            endTime,
+            slotDuration: duration,
+          }),
+        })
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => null)
+          setMessageTone('error')
+          setMessage(data?.error ?? `No pudimos guardar el bloque del ${formatDateLabel(date)}.`)
+          return
+        }
+      }
+
       setMessageTone('info')
-      setMessage('Horario publicado. Ya puede aparecer en el link publico del paciente.')
+      setMessage(`${selectedDates.length} fecha${selectedDates.length === 1 ? '' : 's'} publicada${selectedDates.length === 1 ? '' : 's'}. Ya apareceran en el link publico del paciente.`)
       await refreshData()
     })
   }
@@ -419,18 +432,19 @@ export function ClientWorkspace() {
             <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Publicar disponibilidad</p>
             <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Abre horas para pacientes</h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Define bloques semanales. AgendaSalud genera automaticamente los cupos disponibles en hora chilena.
+              Selecciona fechas en calendario por dia, semana o mes. AgendaSalud genera automaticamente los cupos disponibles en hora chilena.
             </p>
           </div>
 
           <form onSubmit={createAvailability} className="space-y-4">
-            <Field label="Dia">
-              <select value={day} onChange={(event) => setDay(event.target.value)} className={inputClass}>
-                {DAYS.map((item) => (
-                  <option key={item.key} value={item.key}>{item.label}</option>
-                ))}
-              </select>
-            </Field>
+            <CalendarAvailabilityPicker
+              month={calendarMonth}
+              selectedDates={selectedDates}
+              selectionMode={selectionMode}
+              onMonthChange={setCalendarMonth}
+              onModeChange={setSelectionMode}
+              onSelectionChange={setSelectedDates}
+            />
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Inicio">
@@ -540,6 +554,139 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+function CalendarAvailabilityPicker({
+  month,
+  selectedDates,
+  selectionMode,
+  onMonthChange,
+  onModeChange,
+  onSelectionChange,
+}: {
+  month: string
+  selectedDates: string[]
+  selectionMode: SelectionMode
+  onMonthChange: (month: string) => void
+  onModeChange: (mode: SelectionMode) => void
+  onSelectionChange: (dates: string[]) => void
+}) {
+  const days = getCalendarGrid(month)
+  const selected = new Set(selectedDates)
+  const today = getTodayISO()
+
+  function applySelection(date: string) {
+    if (date < today) return
+
+    const dates =
+      selectionMode === 'day'
+        ? [date]
+        : selectionMode === 'week'
+          ? getWeekDates(date).filter((item) => item >= today)
+          : getMonthDates(date).filter((item) => item >= today)
+
+    const next = new Set(selectionMode === 'day' ? selectedDates : [])
+    const allSelected = dates.every((item) => next.has(item))
+
+    dates.forEach((item) => {
+      if (allSelected) next.delete(item)
+      else next.add(item)
+    })
+
+    onSelectionChange(Array.from(next).sort())
+  }
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-black text-slate-900">Calendario de disponibilidad</p>
+          <p className="mt-1 text-xs font-semibold text-slate-500">
+            {selectedDates.length} fecha{selectedDates.length === 1 ? '' : 's'} seleccionada{selectedDates.length === 1 ? '' : 's'}
+          </p>
+        </div>
+        <div className="flex rounded-2xl border border-slate-200 bg-white p-1">
+          {[
+            ['day', 'Dia'],
+            ['week', 'Semana'],
+            ['month', 'Mes'],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onModeChange(key as SelectionMode)}
+              className={[
+                'rounded-xl px-3 py-2 text-xs font-black transition',
+                selectionMode === key ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50',
+              ].join(' ')}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-3 flex items-center justify-between">
+        <button type="button" onClick={() => onMonthChange(addMonths(month, -1))} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-black text-slate-500">
+          ‹
+        </button>
+        <p className="text-sm font-black capitalize text-slate-950">{formatMonthLabel(month)}</p>
+        <button type="button" onClick={() => onMonthChange(addMonths(month, 1))} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-black text-slate-500">
+          ›
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {WEEKDAYS_SHORT.map((weekday) => (
+          <div key={weekday} className="py-2 text-center text-[11px] font-black uppercase tracking-wide text-slate-400">
+            {weekday}
+          </div>
+        ))}
+        {days.map((day) => {
+          const isCurrentMonth = day.startsWith(month.slice(0, 7))
+          const isSelected = selected.has(day)
+          const disabled = day < today
+
+          return (
+            <button
+              key={day}
+              type="button"
+              disabled={disabled}
+              onClick={() => applySelection(day)}
+              className={[
+                'aspect-square rounded-2xl text-sm font-black transition focus:outline-none focus:ring-4 focus:ring-blue-500/10',
+                isSelected
+                  ? 'bg-[linear-gradient(135deg,#2563EB,#14B8A6)] text-white shadow-sm'
+                  : 'border border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50',
+                !isCurrentMonth ? 'opacity-40' : '',
+                disabled ? 'cursor-not-allowed opacity-25 hover:bg-white' : '',
+              ].join(' ')}
+            >
+              {Number(day.slice(8, 10))}
+            </button>
+          )
+        })}
+      </div>
+
+      {selectedDates.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {selectedDates.slice(0, 8).map((date) => (
+            <span key={date} className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
+              {formatDateLabel(date)}
+            </span>
+          ))}
+          {selectedDates.length > 8 && (
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-black text-slate-500">
+              +{selectedDates.length - 8} mas
+            </span>
+          )}
+          <button type="button" onClick={() => onSelectionChange([])} className="rounded-full px-3 py-1 text-xs font-black text-red-600 hover:bg-red-50">
+            Limpiar
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function FunnelStep({ step, title, text, done }: { step: string; title: string; text: string; done: boolean }) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,0.06)]">
@@ -584,7 +731,9 @@ function AppointmentRow({ appointment, onUpdate }: { appointment: Appointment; o
 }
 
 function AvailabilityRow({ block, onDelete }: { block: AvailabilityBlock; onDelete: (id: string) => void }) {
-  const day = DAYS.find((item) => item.key === block.dayOfWeek)?.label ?? block.dayOfWeek
+  const day = block.dayOfWeek.match(/^\d{4}-\d{2}-\d{2}$/)
+    ? formatDateLabel(block.dayOfWeek)
+    : DAYS.find((item) => item.key === block.dayOfWeek)?.label ?? block.dayOfWeek
   return (
     <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <div>
@@ -650,4 +799,86 @@ function buildProfileForm(professional: Professional) {
     publicDescription: professional.publicDescription ?? '',
     appointmentDurationDefault: Number(professional.appointmentDurationDefault || 30),
   }
+}
+
+function getTodayISO() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
+
+function firstDayOfMonth(date: string) {
+  return `${date.slice(0, 7)}-01`
+}
+
+function parseLocalDate(date: string) {
+  const [year, month, day] = date.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function toISODate(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function addMonths(date: string, amount: number) {
+  const parsed = parseLocalDate(date)
+  parsed.setMonth(parsed.getMonth() + amount)
+  parsed.setDate(1)
+  return toISODate(parsed)
+}
+
+function getCalendarGrid(month: string) {
+  const first = parseLocalDate(firstDayOfMonth(month))
+  const start = new Date(first)
+  start.setDate(first.getDate() - first.getDay())
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const day = new Date(start)
+    day.setDate(start.getDate() + index)
+    return toISODate(day)
+  })
+}
+
+function getWeekDates(date: string) {
+  const parsed = parseLocalDate(date)
+  const start = new Date(parsed)
+  start.setDate(parsed.getDate() - parsed.getDay())
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(start)
+    day.setDate(start.getDate() + index)
+    return toISODate(day)
+  })
+}
+
+function getMonthDates(date: string) {
+  const parsed = parseLocalDate(date)
+  const year = parsed.getFullYear()
+  const month = parsed.getMonth()
+  const lastDay = new Date(year, month + 1, 0).getDate()
+
+  return Array.from({ length: lastDay }, (_, index) => toISODate(new Date(year, month, index + 1)))
+}
+
+function formatDateLabel(date: string) {
+  return new Intl.DateTimeFormat('es-CL', {
+    timeZone: 'America/Santiago',
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  }).format(parseLocalDate(date))
+}
+
+function formatMonthLabel(date: string) {
+  return new Intl.DateTimeFormat('es-CL', {
+    timeZone: 'America/Santiago',
+    month: 'long',
+    year: 'numeric',
+  }).format(parseLocalDate(date))
 }

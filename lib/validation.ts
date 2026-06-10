@@ -25,7 +25,10 @@ export const AppointmentSchema = z.object({
 
 export const AvailabilitySchema = z.object({
   professionalId: z.string().min(1),
-  dayOfWeek:      z.enum(['monday','tuesday','wednesday','thursday','friday','saturday','sunday']),
+  dayOfWeek:      z.union([
+    z.enum(['monday','tuesday','wednesday','thursday','friday','saturday','sunday']),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  ]),
   startTime:      z.string().regex(/^\d{2}:\d{2}$/),
   endTime:        z.string().regex(/^\d{2}:\d{2}$/),
   slotDuration:   z.coerce.number().int().min(10).max(120),

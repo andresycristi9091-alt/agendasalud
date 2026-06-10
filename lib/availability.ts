@@ -19,7 +19,7 @@ export async function getAvailableSlotsForDate(
 
   // Bloques de disponibilidad del profesional para ese día
   const availabilityBlocks = await getAvailabilityByProfessional(professional.id)
-  const dayBlocks = availabilityBlocks.filter((b) => b.dayOfWeek === dayKey)
+  const dayBlocks = availabilityBlocks.filter((b) => b.dayOfWeek === date || b.dayOfWeek === dayKey)
 
   if (dayBlocks.length === 0) return []
 

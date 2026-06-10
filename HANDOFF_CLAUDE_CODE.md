@@ -35,6 +35,11 @@ Ultimo foco implementado:
   4. Calendar conectado.
 - Admin permite configurar correo, telefono, Calendar ID y duracion base del profesional.
 - La pagina publica de confirmacion usa `next/link` para navegacion interna y mantiene boton de Google Calendar para el paciente.
+- Disponibilidad profesional:
+  - El selector de disponibilidad ya no usa solo lunes/martes/miercoles.
+  - Ahora muestra calendario mensual con seleccion por `Dia`, `Semana` o `Mes`.
+  - Publicar horario crea bloques para fechas especificas (`YYYY-MM-DD`).
+  - La disponibilidad publica acepta bloques por fecha exacta y mantiene compatibilidad con bloques semanales antiguos.
 - Hotfix produccion:
   - `ADMIN_SESSION_SECRET` ya no provoca 500 si falta; usa fallback estable para no romper `/dashboard`.
   - `ADMIN_EMAILS` ya no provoca 500 si falta; retorna lista vacia y respeta `user_metadata.role`.
@@ -68,6 +73,8 @@ Para produccion sigue siendo recomendable definir:
 - `components/public/PublicBookingPage.tsx`
 - `lib/appointments.ts`
 - `lib/auth/permissions.ts`
+- `lib/availability.ts`
+- `lib/validation.ts`
 
 ## Verificacion ejecutada
 
@@ -98,6 +105,7 @@ Contexto:
 - Las citas se crean en Google Calendar usando `calendarId`, luego `email` del profesional, luego `GOOGLE_CALENDAR_ID`.
 - Para usar el calendario del correo del profesional, compartir ese Calendar con la service account de Google.
 - Hay un embudo visual en el panel cliente: perfil visible, agenda publicada, link paciente y Calendar conectado.
+- El panel cliente usa calendario visual para disponibilidad. Puede seleccionar fechas por dia, semana o mes y guardar bloques por fecha exacta. El backend acepta `dayOfWeek` como dia semanal legacy o como fecha `YYYY-MM-DD`.
 
 Prioridades siguientes:
 1. Probar flujo completo admin:
@@ -105,11 +113,16 @@ Prioridades siguientes:
    - Crear usuario asignado a centro.
    - Login con usuario creado.
    - Confirmar que solo ve su centro.
-2. Probar agendamiento real con un calendario compartido del profesional.
-3. Mejorar recuperacion/cambio de contrasena para usuarios internos.
-4. Agregar auditoria de acciones admin y cambios de agenda.
-5. Agregar pruebas basicas de APIs criticas.
-6. Mantener accesibilidad WCAG, mensajes claros y diseno HealthTech.
+2. Probar flujo calendario:
+   - Seleccionar un dia.
+   - Seleccionar una semana.
+   - Seleccionar un mes.
+   - Confirmar que el link publico muestra horas solo en esas fechas.
+3. Probar agendamiento real con un calendario compartido del profesional.
+4. Mejorar recuperacion/cambio de contrasena para usuarios internos.
+5. Agregar auditoria de acciones admin y cambios de agenda.
+6. Agregar pruebas basicas de APIs criticas.
+7. Mantener accesibilidad WCAG, mensajes claros y diseno HealthTech.
 
 Antes de terminar:
 - Ejecuta npm run lint.
