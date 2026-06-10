@@ -35,6 +35,8 @@ export type Professional = {
   active:                    boolean
   createdAt:                 string
   updatedAt:                 string
+  professionalType?:         string
+  photoUrl?:                 string
 }
 
 export type Availability = {
@@ -97,7 +99,7 @@ async function appendRow(range: string, values: string[]): Promise<void> {
 
 // â”€â”€ Professionals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function getProfessionalBySlug(slug: string): Promise<Professional | null> {
-  const rows = await getSheetData('professionals!A:N')
+  const rows = await getSheetData('professionals!A:P')
   if (rows.length < 2) return null
   const headers = rows[0]
   const found   = rows.slice(1).find((r) => r[1] === slug && r[11]?.toUpperCase() === 'TRUE')
@@ -106,10 +108,12 @@ export async function getProfessionalBySlug(slug: string): Promise<Professional 
 }
 
 export async function getAllProfessionals(): Promise<Professional[]> {
-  const rows = await getSheetData('professionals!A:N')
+  const rows = await getSheetData('professionals!A:P')
   if (rows.length < 2) return []
   const headers = rows[0]
-  return rows.slice(1).map((r) => rowToObject<Professional>(headers, r))
+  return rows.slice(1)
+    .filter((r) => r[11]?.toUpperCase() === 'TRUE')
+    .map((r) => rowToObject<Professional>(headers, r))
 }
 
 // â”€â”€ Availability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

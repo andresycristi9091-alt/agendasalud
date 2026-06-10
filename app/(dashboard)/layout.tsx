@@ -29,7 +29,7 @@ export default async function DashboardLayout({
               <Link href="/dashboard" className="nav-link rounded-xl px-3 py-2 text-sm font-bold">
                 Panel cliente
               </Link>
-              <Link href="/agendar/dr-garcia" className="nav-link rounded-xl px-3 py-2 text-sm font-bold">
+              <Link href="/agendar" className="nav-link rounded-xl px-3 py-2 text-sm font-bold">
                 Pagina usuario
               </Link>
             </nav>

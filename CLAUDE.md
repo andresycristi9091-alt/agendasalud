@@ -6,10 +6,11 @@ AgendaSalud es una app HealthTech/SaaS en Next.js App Router para agendamiento m
 
 Hay dos paginas principales:
 
-- Pagina usuario/paciente: `/agendar/dr-garcia`
+- Pagina usuario/paciente multiprofesional: `/agendar`
+- Funnel por profesional: `/agendar/[slug]`
 - Pagina cliente/profesional: `/dashboard`
 
-El dashboard esta compactado en una sola experiencia cliente: metricas, link publico, disponibilidad y citas.
+El dashboard esta compactado en una sola experiencia cliente: selector de profesional, metricas, link publico, disponibilidad y citas.
 
 ## Stack
 
@@ -33,6 +34,7 @@ El dashboard esta compactado en una sola experiencia cliente: metricas, link pub
 ## Archivos clave
 
 - `components/public/PublicBookingPage.tsx`: pagina publica de agendamiento.
+- `components/public/ProfessionalDirectoryPage.tsx`: portada multiprofesional NeuroPlus.
 - `components/dashboard/ClientWorkspace.tsx`: dashboard cliente/profesional.
 - `lib/date.ts`: utilidades de hora chilena.
 - `lib/availability.ts`: generacion de slots disponibles.
@@ -64,7 +66,21 @@ npm.cmd run build
 
 Si se toca UI publica o dashboard, revisar:
 
+- `/agendar`
 - `/agendar/dr-garcia`
 - `/dashboard`
+
+## Google Sheets: profesionales
+
+La hoja `professionals` soporta estas columnas base:
+
+`id, slug, name, specialty, centerName, email, phone, calendarId, publicDescription, appointmentDurationDefault, timezone, active, createdAt, updatedAt`
+
+Y estas columnas opcionales para NeuroPlus:
+
+- `professionalType`: tipo visible de profesional, por ejemplo `Neurologo`, `Psicologa`, `Fonoaudiologa`.
+- `photoUrl`: URL publica de una imagen del profesional.
+
+Si no hay `photoUrl`, la UI muestra iniciales profesionales.
 
 @AGENTS.md

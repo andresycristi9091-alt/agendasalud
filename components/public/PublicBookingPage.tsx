@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 type Professional = {
+  id?: string
   slug: string
   name: string
   specialty: string
   centerName: string
   publicDescription: string
+  professionalType?: string
+  photoUrl?: string
 }
 
 type TimeSlot = {
@@ -170,9 +173,9 @@ export function PublicBookingPage({ slug }: { slug: string }) {
             <AgendaSaludMark />
             <div>
               <p className="text-sm font-black tracking-tight">
-                Agenda<span className="text-teal-500">Salud</span>
+                Neuro<span className="text-teal-500">Plus</span>
               </p>
-              <p className="text-xs font-medium text-slate-400">Agendamiento seguro</p>
+              <p className="text-xs font-medium text-slate-400">Agenda profesional</p>
             </div>
           </div>
           <div className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 sm:block">
@@ -263,13 +266,13 @@ function Hero({ professional }: { professional: Professional }) {
   return (
     <div className="overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#1D4ED8_0%,#0891B2_52%,#10B981_100%)] p-6 text-white shadow-[0_24px_80px_rgba(37,99,235,0.22)] sm:p-8">
       <div className="mb-6 inline-flex rounded-full border border-white/20 bg-white/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-white/85 backdrop-blur">
-        Reserva en pocos pasos
+        NeuroPlus · Agenda en pocos pasos
       </div>
       <h1 className="max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-5xl">
-        Agenda tu hora medica sin llamadas ni espera
+        Reserva una hora con {professional.name}
       </h1>
       <p className="mt-4 max-w-2xl text-base leading-7 text-white/82 sm:text-lg">
-        Elige fecha, horario y confirma tus datos. El centro recibe la solicitud automaticamente.
+        Elige un horario disponible en hora chilena y confirma tus datos. NeuroPlus recibira tu solicitud automaticamente.
       </p>
 
       <div className="mt-7 grid gap-3 sm:grid-cols-3">
@@ -279,12 +282,17 @@ function Hero({ professional }: { professional: Professional }) {
       </div>
 
       <div className="mt-7 rounded-3xl border border-white/15 bg-white/12 p-4 backdrop-blur">
-        <p className="text-sm font-semibold text-white/70">{professional.centerName}</p>
-        <p className="mt-1 text-xl font-black">{professional.name}</p>
-        <p className="text-sm text-white/78">{professional.specialty}</p>
-        {professional.publicDescription && (
-          <p className="mt-3 text-sm leading-6 text-white/70">{professional.publicDescription}</p>
-        )}
+        <div className="flex items-start gap-4">
+          <ProfessionalPhoto professional={professional} />
+          <div>
+            <p className="text-sm font-semibold text-white/70">{professional.centerName || 'NeuroPlus'}</p>
+            <p className="mt-1 text-xl font-black">{professional.name}</p>
+            <p className="text-sm text-white/78">{professional.professionalType || professional.specialty}</p>
+            {professional.publicDescription && (
+              <p className="mt-3 text-sm leading-6 text-white/70">{professional.publicDescription}</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -646,9 +654,9 @@ function BookingSummary({
     <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)]">
       <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Tu reserva</p>
       <div className="mt-4 space-y-4">
-        <SummaryRow label="Centro" value={professional.centerName || 'Centro de salud'} />
+        <SummaryRow label="Centro" value={professional.centerName || 'NeuroPlus'} />
         <SummaryRow label="Profesional" value={professional.name} />
-        <SummaryRow label="Especialidad" value={professional.specialty} />
+        <SummaryRow label="Tipo de atencion" value={professional.professionalType || professional.specialty} />
         <SummaryRow label="Fecha" value={formatReadableDate(selectedDate)} />
         <SummaryRow label="Horario" value={selectedSlot ? `${selectedSlot.startTime} - ${selectedSlot.endTime}` : 'Por elegir'} />
       </div>
@@ -703,6 +711,33 @@ function TrustCard({ value, label }: { value: string; label: string }) {
     <div className="rounded-3xl border border-white/15 bg-white/14 p-4 backdrop-blur">
       <p className="text-xl font-black">{value}</p>
       <p className="mt-1 text-sm font-semibold text-white/75">{label}</p>
+    </div>
+  )
+}
+
+function ProfessionalPhoto({ professional }: { professional: Professional }) {
+  if (professional.photoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={professional.photoUrl}
+        alt={professional.name}
+        className="h-20 w-20 shrink-0 rounded-3xl object-cover ring-4 ring-white/20"
+      />
+    )
+  }
+
+  const initials = professional.name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+
+  return (
+    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-white/18 text-xl font-black text-white ring-4 ring-white/15">
+      {initials || 'NP'}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 
 type AvailabilityBlock = {
   id: string
@@ -24,8 +24,14 @@ type Appointment = {
   reason: string
 }
 
-const PUBLIC_SLUG = 'dr-garcia'
-const PROFESSIONAL_ID = 'prof-001'
+type Professional = {
+  id: string
+  slug: string
+  name: string
+  specialty: string
+  professionalType: string
+  photoUrl: string
+}
 
 const DAYS = [
   { key: 'monday', label: 'Lunes' },
@@ -40,6 +46,8 @@ const DAYS = [
 const DURATIONS = [15, 20, 30, 45, 60]
 
 export function ClientWorkspace() {
+  const [professionals, setProfessionals] = useState<Professional[]>([])
+  const [selectedProfessionalId, setSelectedProfessionalId] = useState('')
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [availability, setAvailability] = useState<AvailabilityBlock[]>([])
   const [loading, setLoading] = useState(true)
@@ -52,15 +60,16 @@ export function ClientWorkspace() {
   const [endTime, setEndTime] = useState('13:00')
   const [duration, setDuration] = useState(30)
 
-  const publicLink = `https://agendasalud.vercel.app/agendar/${PUBLIC_SLUG}`
+  const selectedProfessional = professionals.find((professional) => professional.id === selectedProfessionalId)
+  const publicLink = selectedProfessional
+    ? `https://agendasalud.vercel.app/agendar/${selectedProfessional.slug}`
+    : 'https://agendasalud.vercel.app/agendar'
 
-  useEffect(() => {
-    refreshData().finally(() => setLoading(false))
-  }, [])
+  const refreshData = useCallback(async () => {
+    if (!selectedProfessionalId) return
 
-  async function refreshData() {
     const [appointmentsResponse, availabilityResponse] = await Promise.all([
-      fetch(`/api/dashboard/appointments?professionalId=${PROFESSIONAL_ID}`),
+      fetch(`/api/dashboard/appointments?professionalId=${selectedProfessionalId}`),
       fetch('/api/dashboard/availability'),
     ])
 
@@ -68,8 +77,31 @@ export function ClientWorkspace() {
     const availabilityData = await availabilityResponse.json().catch(() => ({}))
 
     setAppointments(appointmentsData.appointments ?? [])
-    setAvailability(availabilityData.availability ?? [])
-  }
+    setAvailability(
+      (availabilityData.availability ?? []).filter(
+        (block: AvailabilityBlock) => block.professionalId === selectedProfessionalId
+      )
+    )
+  }, [selectedProfessionalId])
+
+  useEffect(() => {
+    fetch('/api/public/professionals')
+      .then((response) => response.json())
+      .then((data) => {
+        const loaded = data.professionals ?? []
+        setProfessionals(loaded)
+        setSelectedProfessionalId(loaded[0]?.id ?? '')
+      })
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    if (!selectedProfessionalId) return
+    const timer = window.setTimeout(() => {
+      refreshData()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [refreshData, selectedProfessionalId])
 
   async function copyPublicLink() {
     await navigator.clipboard.writeText(publicLink)
@@ -86,7 +118,7 @@ export function ClientWorkspace() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          professionalId: PROFESSIONAL_ID,
+          professionalId: selectedProfessionalId,
           dayOfWeek: day,
           startTime,
           endTime,
@@ -128,18 +160,18 @@ export function ClientWorkspace() {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="mb-3 inline-flex rounded-full border border-white/20 bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-white/85">
-              Panel cliente
+              Panel NeuroPlus
             </p>
             <h1 className="max-w-3xl text-3xl font-black leading-tight tracking-tight sm:text-5xl">
-              Gestiona tu agenda, publica horarios y recibe reservas sin llamadas.
+              Gestiona profesionales, publica horarios y recibe reservas sin llamadas.
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-white/78">
-              Un solo panel para abrir disponibilidad, revisar citas y compartir tu link de agendamiento con pacientes.
+              Selecciona un profesional, abre disponibilidad y comparte su link publico con pacientes.
             </p>
           </div>
 
           <div className="rounded-3xl border border-white/15 bg-white/12 p-4 backdrop-blur lg:min-w-[330px]">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-white/55">Link paciente</p>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-white/55">Link del profesional</p>
             <p className="mt-2 break-all text-sm font-semibold text-white/90">{publicLink}</p>
             <div className="mt-4 flex gap-2">
               <button
@@ -173,6 +205,26 @@ export function ClientWorkspace() {
 
       <section className="grid gap-6 lg:grid-cols-[420px_1fr]">
         <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_8px_28px_rgba(15,23,42,0.06)]">
+          <div className="mb-6 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+            <label className="block">
+              <span className="mb-2 block text-sm font-black text-slate-800">Profesional</span>
+              <select
+                value={selectedProfessionalId}
+                onChange={(event) => setSelectedProfessionalId(event.target.value)}
+                className={inputClass}
+              >
+                {professionals.map((professional) => (
+                  <option key={professional.id} value={professional.id}>
+                    {professional.name} - {professional.professionalType || professional.specialty}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="mt-3 text-xs font-semibold text-slate-500">
+              Para agregar foto o tipo de profesional, edita las columnas `professionalType` y `photoUrl` en Google Sheets.
+            </p>
+          </div>
+
           <div className="mb-5">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Publicar disponibilidad</p>
             <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Abre horas para pacientes</h2>
