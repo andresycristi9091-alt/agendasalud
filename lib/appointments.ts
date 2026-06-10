@@ -4,9 +4,8 @@ import {
   createAppointment,
   isSlotTaken,
   getProfessionalBySlug,
-  type Appointment,
 } from './google/sheets'
-import { TIMEZONE } from './date'
+import { TIMEZONE, chileLocalDateTimeToISO } from './date'
 import type { AppointmentInput } from './validation'
 
 export type BookingResult =
@@ -30,9 +29,6 @@ export async function bookAppointment(input: AppointmentInput): Promise<BookingR
   }
 
   // 3. Crear evento en Google Calendar
-  const startISO = `${input.date}T${input.startTime}:00`
-  const endISO   = `${input.date}T${input.endTime}:00`
-
   const description = [
     `Paciente: ${input.patientName}`,
     `Email: ${input.patientEmail}`,
@@ -53,8 +49,8 @@ export async function bookAppointment(input: AppointmentInput): Promise<BookingR
         calendarId:    professional.calendarId,
         summary:       `Cita AgendaSalud - ${input.patientName}`,
         description,
-        startDateTime: new Date(`${input.date}T${input.startTime}:00`).toISOString(),
-        endDateTime:   new Date(`${input.date}T${input.endTime}:00`).toISOString(),
+        startDateTime: chileLocalDateTimeToISO(input.date, input.startTime),
+        endDateTime:   chileLocalDateTimeToISO(input.date, input.endTime),
         timezone:      TIMEZONE,
         attendeeEmail: input.patientEmail,
       })

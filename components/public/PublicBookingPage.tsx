@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 type Professional = {
   slug: string
@@ -71,34 +71,39 @@ export function PublicBookingPage({ slug }: { slug: string }) {
     }
   }, [slug])
 
-  useEffect(() => {
-    if (!selectedDate) return
-    let cancelled = false
-
+  const loadSlots = useCallback(async (date: string, isCancelled: () => boolean = () => false) => {
+    if (!date) return
     setLoadingSlots(true)
     setSlots([])
     setSlot(null)
     setSlotsError(null)
 
-    fetch(`/api/public/availability/${slug}?date=${selectedDate}`)
+    fetch(`/api/public/availability/${slug}?date=${date}`)
       .then((response) => {
         if (!response.ok) throw new Error('availability')
         return response.json()
       })
       .then((data) => {
-        if (!cancelled) setSlots(data.slots ?? [])
+        if (!isCancelled()) setSlots(data.slots ?? [])
       })
       .catch(() => {
-        if (!cancelled) setSlotsError('No pudimos cargar horarios para esta fecha.')
+        if (!isCancelled()) setSlotsError('No pudimos cargar horarios para esta fecha.')
       })
       .finally(() => {
-        if (!cancelled) setLoadingSlots(false)
+        if (!isCancelled()) setLoadingSlots(false)
       })
+  }, [slug])
 
+  useEffect(() => {
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      loadSlots(selectedDate, () => cancelled)
+    }, 0)
     return () => {
       cancelled = true
+      window.clearTimeout(timer)
     }
-  }, [selectedDate, slug])
+  }, [loadSlots, selectedDate])
 
   const days = useMemo(() => getDaysToShow(21), [])
   const availableSlots = slots.filter((slot) => slot.available)
@@ -768,11 +773,16 @@ function AgendaSaludMark() {
 }
 
 function getTodayISO() {
-  return new Date().toISOString().split('T')[0]
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
 }
 
 function getDaysToShow(amount: number) {
-  const today = new Date()
+  const today = parseISODate(getTodayISO())
   return Array.from({ length: amount }, (_, index) => {
     const date = new Date(today)
     date.setDate(today.getDate() + index)

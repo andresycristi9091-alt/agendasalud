@@ -1,8 +1,6 @@
 import { getBusySlots } from './google/calendar'
 import { getAvailabilityByProfessional, getAppointmentsByDateAndProfessional, type Professional } from './google/sheets'
-import { generateTimeSlots, isSlotBusy, getDayOfWeekKey, TIMEZONE } from './date'
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _tz = TIMEZONE
+import { generateTimeSlots, isSlotBusy, getDayOfWeekKey, TIMEZONE, chileDayBoundary } from './date'
 
 export type TimeSlot = {
   startTime: string
@@ -30,16 +28,14 @@ export async function getAvailableSlotsForDate(
   const takenStartTimes = new Set(existingAppointments.map((a) => a.startTime))
 
   // Horas ocupadas en Google Calendar
-  const dayStart = `${date}T00:00:00`
-  const dayEnd   = `${date}T23:59:59`
   let busySlots: Array<{ start: string; end: string }> = []
 
   if (professional.calendarId) {
     try {
       busySlots = await getBusySlots(
         professional.calendarId,
-        new Date(`${dayStart}`).toISOString(),
-        new Date(`${dayEnd}`).toISOString(),
+        chileDayBoundary(date, 'start'),
+        chileDayBoundary(date, 'end'),
         TIMEZONE
       )
     } catch {

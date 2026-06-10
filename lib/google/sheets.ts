@@ -1,6 +1,6 @@
-import { google } from 'googleapis'
+﻿import { google } from 'googleapis'
 
-// ── Auth ──────────────────────────────────────────────
+// â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function getAuth() {
   const privateKey = (process.env.GOOGLE_PRIVATE_KEY ?? '').replace(/\\n/g, '\n')
 
@@ -19,7 +19,7 @@ function getSheetsClient() {
 
 const SHEET_ID = process.env.GOOGLE_SHEETS_ID ?? ''
 
-// ── Tipos ────────────────────────────────────────────
+// â”€â”€ Tipos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export type Professional = {
   id:                        string
   slug:                      string
@@ -68,7 +68,7 @@ export type Appointment = {
   updatedAt:            string
 }
 
-// ── Helpers ──────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function rowToObject<T>(headers: string[], row: string[]): T {
   const obj: Record<string, string> = {}
   headers.forEach((h, i) => { obj[h] = row[i] ?? '' })
@@ -94,17 +94,8 @@ async function appendRow(range: string, values: string[]): Promise<void> {
   })
 }
 
-async function updateRow(range: string, values: string[]): Promise<void> {
-  const sheets = getSheetsClient()
-  await sheets.spreadsheets.values.update({
-    spreadsheetId:    SHEET_ID,
-    range,
-    valueInputOption: 'RAW',
-    requestBody:      { values: [values] },
-  })
-}
 
-// ── Professionals ─────────────────────────────────────
+// â”€â”€ Professionals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function getProfessionalBySlug(slug: string): Promise<Professional | null> {
   const rows = await getSheetData('professionals!A:N')
   if (rows.length < 2) return null
@@ -121,7 +112,7 @@ export async function getAllProfessionals(): Promise<Professional[]> {
   return rows.slice(1).map((r) => rowToObject<Professional>(headers, r))
 }
 
-// ── Availability ──────────────────────────────────────
+// â”€â”€ Availability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function getAvailabilityByProfessional(professionalId: string): Promise<Availability[]> {
   const rows = await getSheetData('availability!A:I')
   if (rows.length < 2) return []
@@ -160,7 +151,7 @@ export async function deleteAvailability(id: string): Promise<void> {
   })
 }
 
-// ── Appointments ──────────────────────────────────────
+// â”€â”€ Appointments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function getAppointmentsByProfessional(professionalId: string): Promise<Appointment[]> {
   const rows = await getSheetData('appointments!A:Q')
   if (rows.length < 2) return []
@@ -218,3 +209,4 @@ export async function isSlotTaken(
   const existing = await getAppointmentsByDateAndProfessional(professionalId, date)
   return existing.some((a) => a.startTime === startTime)
 }
+
