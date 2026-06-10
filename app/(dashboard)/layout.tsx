@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Logo } from '@/components/ui/Logo'
 import { LogoutButton } from '@/components/ui/LogoutButton'
+import { getCurrentUserRole } from '@/lib/auth/admin'
 
 export default async function DashboardLayout({
   children,
@@ -15,6 +16,8 @@ export default async function DashboardLayout({
   } = await supabase.auth.getUser()
 
   if (!user) redirect('/login')
+
+  const { isAdmin } = await getCurrentUserRole()
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -29,12 +32,11 @@ export default async function DashboardLayout({
               <Link href="/dashboard" className="nav-link rounded-xl px-3 py-2 text-sm font-bold">
                 Panel cliente
               </Link>
-              <Link href="/agendar" className="nav-link rounded-xl px-3 py-2 text-sm font-bold">
-                Pagina usuario
-              </Link>
-              <Link href="/dashboard/admin" className="nav-link rounded-xl px-3 py-2 text-sm font-bold">
-                Admin
-              </Link>
+              {isAdmin && (
+                <Link href="/dashboard/admin" className="nav-link rounded-xl px-3 py-2 text-sm font-bold">
+                  Admin
+                </Link>
+              )}
             </nav>
           </div>
 

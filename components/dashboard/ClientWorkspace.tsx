@@ -94,15 +94,11 @@ export function ClientWorkspace() {
   useEffect(() => {
     Promise.all([
       fetch('/api/admin/me').then((response) => response.json()).catch(() => null),
-      fetch('/api/public/professionals').then((response) => response.json()),
+      fetch('/api/dashboard/professionals').then((response) => response.json()),
     ])
       .then(([meData, professionalsData]) => {
         setMe(meData)
-        const loadedAll = professionalsData.professionals ?? []
-        const centerId = meData?.isAdmin ? '' : meData?.user?.centerId
-        const loaded = centerId
-          ? loadedAll.filter((professional: Professional) => professional.centerId === centerId)
-          : loadedAll
+        const loaded = professionalsData.professionals ?? []
         setProfessionals(loaded)
         setSelectedProfessionalId(loaded[0]?.id ?? '')
       })
@@ -180,7 +176,7 @@ export function ClientWorkspace() {
               Gestiona profesionales, publica horarios y recibe reservas sin llamadas.
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-white/78">
-              Selecciona un profesional, abre disponibilidad y comparte su link publico con pacientes.
+              Selecciona un profesional de tu centro, abre disponibilidad y comparte su link publico con pacientes.
             </p>
           </div>
 
@@ -226,6 +222,7 @@ export function ClientWorkspace() {
                 value={selectedProfessionalId}
                 onChange={(event) => setSelectedProfessionalId(event.target.value)}
                 className={inputClass}
+                disabled={professionals.length === 0}
               >
                 {professionals.map((professional) => (
                   <option key={professional.id} value={professional.id}>
@@ -235,9 +232,17 @@ export function ClientWorkspace() {
               </select>
             </label>
             <p className="mt-3 text-xs font-semibold text-slate-500">
-              Para agregar foto o tipo de profesional, edita las columnas `professionalType` y `photoUrl` en Google Sheets.
+              {me?.isAdmin
+                ? 'Puedes editar foto, tipo de profesional, centro y permisos desde Admin.'
+                : 'Solo se muestran profesionales asignados al centro de tu cuenta.'}
             </p>
           </div>
+
+          {professionals.length === 0 && (
+            <div className="mb-5 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+              Tu cuenta aun no tiene profesionales asignados. Solicita al administrador que asocie tu usuario a un centro activo.
+            </div>
+          )}
 
           <div className="mb-5">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Publicar disponibilidad</p>
@@ -281,7 +286,7 @@ export function ClientWorkspace() {
 
             <button
               type="submit"
-              disabled={isPending}
+              disabled={isPending || professionals.length === 0}
               className="h-13 w-full rounded-2xl bg-[linear-gradient(135deg,#2563EB,#0891B2)] px-5 text-sm font-black text-white shadow-[0_16px_35px_rgba(37,99,235,0.20)] transition hover:-translate-y-0.5 disabled:opacity-50"
             >
               {isPending ? 'Publicando...' : 'Publicar horario'}
