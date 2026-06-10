@@ -1,16 +1,27 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 export default function AgendaSaludLoginPage() {
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError]       = useState<string | null>(null)
+  const [error, setError]       = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const expiredLink = window.location.hash.includes('otp_expired') || window.location.search.includes('otp_expired')
+    return expiredLink ? 'El enlace del correo expiro o ya fue usado. Solicita un nuevo enlace desde Perfil.' : null
+  })
   const [loading, setLoading]   = useState(false)
   const router   = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    const hash = window.location.hash
+    const query = window.location.search
+
+    if (hash.includes('otp_expired') || query.includes('otp_expired')) window.history.replaceState(null, '', '/login')
+  }, [])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

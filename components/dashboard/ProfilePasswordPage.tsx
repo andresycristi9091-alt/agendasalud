@@ -47,7 +47,9 @@ export function ProfilePasswordPage() {
     setLoading(true)
 
     const normalizedEmail = email.trim().toLowerCase()
-    const redirectTo = `${window.location.origin}/cambiar-contrasena?reset=1`
+    const appBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || window.location.origin
+    const publicBaseUrl = window.location.hostname === 'localhost' ? 'https://agendasalud.vercel.app' : appBaseUrl
+    const redirectTo = `${publicBaseUrl}/auth/callback?next=/cambiar-contrasena?reset=1`
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
       redirectTo,
     })
