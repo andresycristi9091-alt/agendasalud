@@ -25,6 +25,9 @@ export default async function DashboardLayout({
               <Link href="/dashboard" className="nav-link rounded-xl px-3 py-2 text-sm font-bold">
                 Panel cliente
               </Link>
+              <Link href="/dashboard/perfil" className="nav-link rounded-xl px-3 py-2 text-sm font-bold">
+                Perfil
+              </Link>
               {isAdmin && (
                 <Link href="/dashboard/admin" className="nav-link rounded-xl px-3 py-2 text-sm font-bold">
                   Admin
