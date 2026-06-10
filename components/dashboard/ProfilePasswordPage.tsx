@@ -3,13 +3,12 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-type Step = 'email' | 'code' | 'password' | 'done'
+type Step = 'email' | 'linkSent' | 'password' | 'done'
 
 export function ProfilePasswordPage() {
   const supabase = createClient()
   const [step, setStep] = useState<Step>('email')
   const [email, setEmail] = useState('')
-  const [code, setCode] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [message, setMessage] = useState<string | null>(null)
@@ -23,55 +22,46 @@ export function ProfilePasswordPage() {
         if (data?.user?.email) setEmail(data.user.email)
       })
       .catch(() => null)
-  }, [])
 
-  async function sendCode(event: FormEvent<HTMLFormElement>) {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session && window.location.search.includes('reset=1')) {
+        setStep('password')
+        setMessage('Enlace verificado. Ahora puedes crear una nueva contrasena.')
+      }
+    })
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setStep('password')
+        setMessage('Enlace verificado. Ahora puedes crear una nueva contrasena.')
+      }
+    })
+
+    return () => listener.subscription.unsubscribe()
+  }, [supabase.auth])
+
+  async function sendRecoveryLink(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
     setMessage(null)
     setLoading(true)
 
     const normalizedEmail = email.trim().toLowerCase()
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: normalizedEmail,
-      options: {
-        shouldCreateUser: false,
-      },
+    const redirectTo = `${window.location.origin}/cambiar-contrasena?reset=1`
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+      redirectTo,
     })
 
     setLoading(false)
 
-    if (otpError) {
-      setError('No pudimos enviar el codigo. Verifica que el correo exista en la plataforma.')
+    if (resetError) {
+      setError('No pudimos enviar el enlace. Verifica que el correo exista en la plataforma.')
       return
     }
 
     setEmail(normalizedEmail)
-    setStep('code')
-    setMessage('Te enviamos un codigo al correo indicado. Revisa tambien spam o promociones.')
-  }
-
-  async function verifyCode(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setError(null)
-    setMessage(null)
-    setLoading(true)
-
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email,
-      token: code.trim(),
-      type: 'email',
-    })
-
-    setLoading(false)
-
-    if (verifyError) {
-      setError('El codigo no es valido o ya expiro. Solicita uno nuevo e intenta otra vez.')
-      return
-    }
-
-    setStep('password')
-    setMessage('Codigo verificado. Ahora puedes crear una nueva contrasena.')
+    setStep('linkSent')
+    setMessage('Te enviamos un enlace seguro al correo indicado. Abre el enlace para definir una nueva contrasena.')
   }
 
   async function updatePassword(event: FormEvent<HTMLFormElement>) {
@@ -94,7 +84,7 @@ export function ProfilePasswordPage() {
     setLoading(false)
 
     if (updateError) {
-      setError('No pudimos actualizar la contrasena. Vuelve a verificar el codigo.')
+      setError('No pudimos actualizar la contrasena. Abre nuevamente el enlace del correo e intenta otra vez.')
       return
     }
 
@@ -114,7 +104,7 @@ export function ProfilePasswordPage() {
           Cambia tu contrasena con verificacion por correo
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-7 text-white/78">
-          Para proteger la cuenta, enviaremos un codigo al correo registrado antes de permitir el cambio.
+          Para proteger la cuenta, enviaremos un enlace seguro al correo registrado antes de permitir el cambio.
         </p>
       </section>
 
@@ -135,7 +125,7 @@ export function ProfilePasswordPage() {
           )}
 
           {step === 'email' && (
-            <form onSubmit={sendCode} className="space-y-5">
+            <form onSubmit={sendRecoveryLink} className="space-y-5">
               <Field label="Correo electronico">
                 <input
                   type="email"
@@ -146,38 +136,28 @@ export function ProfilePasswordPage() {
                   required
                 />
               </Field>
-              <PrimaryButton loading={loading}>Enviar codigo</PrimaryButton>
+              <PrimaryButton loading={loading}>Enviar enlace seguro</PrimaryButton>
             </form>
           )}
 
-          {step === 'code' && (
-            <form onSubmit={verifyCode} className="space-y-5">
-              <Field label="Codigo recibido">
-                <input
-                  inputMode="numeric"
-                  value={code}
-                  onChange={(event) => setCode(event.target.value)}
-                  placeholder="Ingresa el codigo de tu correo"
-                  className={inputClass}
-                  required
-                />
-              </Field>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <PrimaryButton loading={loading}>Verificar codigo</PrimaryButton>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep('email')
-                    setCode('')
-                    setMessage(null)
-                    setError(null)
-                  }}
-                  className="h-13 rounded-2xl border border-slate-200 px-5 text-sm font-black text-slate-600 transition hover:bg-slate-50"
-                >
-                  Cambiar correo
-                </button>
-              </div>
-            </form>
+          {step === 'linkSent' && (
+            <div className="rounded-3xl border border-blue-100 bg-blue-50 p-6">
+              <p className="text-lg font-black text-blue-800">Revisa tu correo</p>
+              <p className="mt-2 text-sm leading-6 text-blue-700">
+                Abre el correo de Supabase Auth y presiona el enlace. Ese enlace verifica tu identidad y te traera de vuelta para crear una nueva contrasena.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep('email')
+                  setMessage(null)
+                  setError(null)
+                }}
+                className="mt-5 h-12 rounded-2xl border border-blue-200 bg-white px-5 text-sm font-black text-blue-700 transition hover:bg-blue-50"
+              >
+                Enviar a otro correo
+              </button>
+            </div>
           )}
 
           {step === 'password' && (
@@ -218,7 +198,6 @@ export function ProfilePasswordPage() {
                 type="button"
                 onClick={() => {
                   setStep('email')
-                  setCode('')
                   setMessage(null)
                 }}
                 className="mt-5 h-12 rounded-2xl bg-emerald-600 px-5 text-sm font-black text-white transition hover:bg-emerald-700"
@@ -235,8 +214,8 @@ export function ProfilePasswordPage() {
           <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-500">
             <li>Usa al menos 8 caracteres.</li>
             <li>No reutilices claves personales.</li>
-            <li>El codigo vence por seguridad.</li>
-            <li>Si no llega el correo, revisa spam o solicita un nuevo codigo.</li>
+            <li>El enlace vence por seguridad.</li>
+            <li>Si no llega el correo, revisa spam o solicita un nuevo enlace.</li>
           </ul>
         </aside>
       </section>
@@ -247,7 +226,7 @@ export function ProfilePasswordPage() {
 function StepIndicator({ step }: { step: Step }) {
   const steps = [
     { key: 'email', label: 'Correo' },
-    { key: 'code', label: 'Codigo' },
+    { key: 'linkSent', label: 'Enlace' },
     { key: 'password', label: 'Nueva clave' },
   ] satisfies Array<{ key: Step; label: string }>
 
