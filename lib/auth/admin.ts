@@ -2,11 +2,12 @@ import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js
 import { createClient } from '@/lib/supabase/server'
 import { getLocalAdminSession, LOCAL_ADMIN_EMAIL } from '@/lib/auth/local-admin-session'
 
-const FALLBACK_ADMIN_EMAILS = ['andresycristi9091@gmail.com', 'admin@agendasalud.cl']
-
 export function getAdminEmails() {
   const configured = process.env.ADMIN_EMAILS?.split(',').map((email) => email.trim().toLowerCase()).filter(Boolean) ?? []
-  return Array.from(new Set([...configured, ...FALLBACK_ADMIN_EMAILS]))
+  if (configured.length === 0) {
+    throw new Error('ADMIN_EMAILS no esta configurado. Define al menos un correo admin en las variables de entorno.')
+  }
+  return configured
 }
 
 export async function getCurrentUserRole() {

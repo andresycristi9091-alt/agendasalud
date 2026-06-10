@@ -30,9 +30,16 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const isDashboard = request.nextUrl.pathname.startsWith('/dashboard')
-  const isLogin = request.nextUrl.pathname.startsWith('/login')
+  const { pathname } = request.nextUrl
+  const isDashboard = pathname.startsWith('/dashboard')
+  const isLogin = pathname.startsWith('/login')
+  const isAdminApi = pathname.startsWith('/api/admin') || pathname.startsWith('/api/dashboard')
   const localAdminSession = await getLocalAdminSessionFromRequest(request)
+
+  // Proteger rutas de API que requieren autenticacion
+  if (isAdminApi && !user && !localAdminSession) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
 
   if (isDashboard && !user && !localAdminSession) {
     const url = request.nextUrl.clone()

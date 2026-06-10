@@ -6,7 +6,9 @@ import {
   getProfessionalBySlug,
 } from './google/sheets'
 import { TIMEZONE, chileLocalDateTimeToISO } from './date'
+import { acquireLock, releaseLock, bookingLockKey } from './mutex'
 import type { AppointmentInput } from './validation'
+import type { Professional } from './google/sheets'
 
 export type BookingResult =
   | { success: true;  appointmentId: string; calendarEventId: string }
@@ -19,7 +21,28 @@ export async function bookAppointment(input: AppointmentInput): Promise<BookingR
     return { success: false, error: 'Profesional no encontrado.' }
   }
 
-  // 2. Verificar que el slot aún esté disponible (anti doble reserva)
+  // 2. Adquirir lock atomico para prevenir doble-booking concurrente
+  const lockKey = bookingLockKey(professional.id, input.date, input.startTime)
+  const locked = acquireLock(lockKey)
+  if (!locked) {
+    return {
+      success: false,
+      error: 'Ese horario esta siendo reservado ahora mismo. Intenta en unos segundos.',
+    }
+  }
+
+  try {
+    return await bookWithLock(professional, input)
+  } finally {
+    releaseLock(lockKey)
+  }
+}
+
+async function bookWithLock(
+  professional: Professional,
+  input: AppointmentInput,
+): Promise<BookingResult> {
+  // Verificacion post-lock: confirmar que el slot sigue libre
   const alreadyTaken = await isSlotTaken(professional.id, input.date, input.startTime)
   if (alreadyTaken) {
     return {
@@ -42,11 +65,17 @@ export async function bookAppointment(input: AppointmentInput): Promise<BookingR
     .filter(Boolean)
     .join('\n')
 
+  const targetCalendarId =
+    professional.calendarId ||
+    professional.email ||
+    process.env.GOOGLE_CALENDAR_ID ||
+    ''
+
   let calendarEventId = ''
-  if (professional.calendarId) {
+  if (targetCalendarId) {
     try {
       calendarEventId = await createCalendarEvent({
-        calendarId:    professional.calendarId,
+        calendarId:    targetCalendarId,
         summary:       `Cita AgendaSalud - ${input.patientName}`,
         description,
         startDateTime: chileLocalDateTimeToISO(input.date, input.startTime),

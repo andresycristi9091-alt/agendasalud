@@ -14,13 +14,12 @@ type LocalAdminPayload = {
   exp: number
 }
 
-function getSecret() {
-  return (
-    process.env.ADMIN_SESSION_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.GOOGLE_PRIVATE_KEY ||
-    `${process.env.NEXT_PUBLIC_SUPABASE_URL}:${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
-  )
+function getSecret(): string {
+  const secret = process.env.ADMIN_SESSION_SECRET
+  if (!secret) {
+    throw new Error('ADMIN_SESSION_SECRET no esta configurado. Agrega esta variable de entorno antes de continuar.')
+  }
+  return secret
 }
 
 function bytesToBase64url(bytes: Uint8Array) {
@@ -106,7 +105,13 @@ async function verifySessionValue(value?: string): Promise<LocalAdminPayload | n
   if (!value) return null
 
   const [payload, signature] = value.split('.')
-  if (!payload || !signature || (await sign(payload)) !== signature) return null
+  const expectedSignature = await sign(payload)
+  const a = new TextEncoder().encode(expectedSignature)
+  const b = new TextEncoder().encode(signature)
+  if (a.length !== b.length) return null
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]
+  if (!payload || !signature || diff !== 0) return null
 
   try {
     const parsed = JSON.parse(base64urlToText(payload)) as LocalAdminPayload

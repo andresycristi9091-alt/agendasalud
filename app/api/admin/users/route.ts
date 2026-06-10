@@ -64,13 +64,15 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Ya existe un usuario activo con ese correo.' }, { status: 409 })
       }
 
+      const centerId = parsed.data.centerId || (parsed.data.role === 'user' ? (process.env.DEFAULT_CENTER_ID || 'center-neuroplus') : '')
+
       const user = await createManagedUser({
         id: uuidv4(),
         email,
         name: parsed.data.name,
         passwordHash: hashPassword(parsed.data.password),
         role: parsed.data.role,
-        centerId: parsed.data.centerId,
+        centerId,
         active: true,
       })
 
@@ -94,7 +96,7 @@ export async function POST(req: Request) {
       user_metadata: {
         name: parsed.data.name,
         role: parsed.data.role,
-        centerId: parsed.data.centerId,
+        centerId: parsed.data.centerId || (parsed.data.role === 'user' ? (process.env.DEFAULT_CENTER_ID || 'center-neuroplus') : ''),
       },
     })
 

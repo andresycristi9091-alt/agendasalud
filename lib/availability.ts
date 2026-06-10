@@ -38,11 +38,12 @@ export async function getAvailableSlotsForDate(
         chileDayBoundary(date, 'end'),
         TIMEZONE
       )
-    } catch {
-      // Si falla Calendar, continuamos sin esos datos
+    } catch (err) {
+      console.warn('[availability] Google Calendar no disponible, continuando sin datos de calendario:', err)
     }
   }
 
+  const seen = new Set<string>()
   const allSlots: TimeSlot[] = []
 
   for (const block of dayBlocks) {
@@ -50,6 +51,10 @@ export async function getAvailableSlotsForDate(
     const slots    = generateTimeSlots(date, block.startTime, block.endTime, duration)
 
     for (const slot of slots) {
+      // Deduplicar slots que aparecen en multiples bloques solapados
+      if (seen.has(slot.startTime)) continue
+      seen.add(slot.startTime)
+
       const isTakenInSheets  = takenStartTimes.has(slot.startTime)
       const isTakenInCal     = isSlotBusy(slot.startISO, slot.endISO, busySlots)
       const isInPast         = new Date(slot.startISO) < new Date()
@@ -60,6 +65,9 @@ export async function getAvailableSlotsForDate(
       })
     }
   }
+
+  // Ordenar por hora de inicio
+  allSlots.sort((a, b) => a.startTime.localeCompare(b.startTime))
 
   return allSlots
 }

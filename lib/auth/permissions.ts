@@ -11,7 +11,12 @@ import {
 type AuthContext = Awaited<ReturnType<typeof getCurrentUserRole>>
 
 function getUserCenterId(context: AuthContext) {
-  return String(context.user?.user_metadata?.centerId ?? '').trim()
+  const centerId = String(context.user?.user_metadata?.centerId ?? '').trim()
+  if (centerId) return centerId
+
+  // MVP NeuroPlus: usuarios operativos sin centro explicito quedan asociados
+  // al centro base para evitar un panel vacio por configuracion incompleta.
+  return process.env.DEFAULT_CENTER_ID || 'center-neuroplus'
 }
 
 export async function requireDashboardUser() {

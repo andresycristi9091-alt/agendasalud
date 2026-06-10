@@ -116,7 +116,13 @@ export function AdminWorkspace() {
   async function loadCenters() {
     const response = await fetch('/api/admin/centers')
     const data = await response.json().catch(() => ({}))
-    setCenters(data.centers ?? [])
+    const loadedCenters = data.centers ?? []
+    setCenters(loadedCenters)
+    const neuroplus = loadedCenters.find((center: HealthCenter) => center.slug === 'neuroplus')
+    if (neuroplus) {
+      setUserForm((current) => current.centerId ? current : { ...current, centerId: neuroplus.id })
+      setProfessionalForm((current) => current.centerId ? current : { ...current, centerId: neuroplus.id, centerName: neuroplus.name })
+    }
   }
 
   async function loadMe() {
@@ -291,7 +297,16 @@ export function AdminWorkspace() {
               <input value={professionalForm.professionalType} onChange={(e) => updateProfessionalForm('professionalType', e.target.value)} className={inputClass} placeholder="Tipo: Neurologo, Psicologa..." />
               <input value={professionalForm.specialty} onChange={(e) => updateProfessionalForm('specialty', e.target.value)} className={inputClass} placeholder="Especialidad" required />
               <input value={professionalForm.photoUrl} onChange={(e) => updateProfessionalForm('photoUrl', e.target.value)} className={inputClass} placeholder="URL fotografia" />
-              <input value={professionalForm.calendarId} onChange={(e) => updateProfessionalForm('calendarId', e.target.value)} className={inputClass} placeholder="Google Calendar ID" />
+              <input value={professionalForm.email} onChange={(e) => updateProfessionalForm('email', e.target.value)} className={inputClass} placeholder="Correo profesional / calendario principal" />
+              <input value={professionalForm.phone} onChange={(e) => updateProfessionalForm('phone', e.target.value)} className={inputClass} placeholder="Telefono profesional" />
+              <input value={professionalForm.calendarId} onChange={(e) => updateProfessionalForm('calendarId', e.target.value)} className={inputClass} placeholder="Calendar ID opcional" />
+              <select value={professionalForm.appointmentDurationDefault} onChange={(e) => updateProfessionalForm('appointmentDurationDefault', Number(e.target.value))} className={inputClass}>
+                <option value={10}>10 minutos</option>
+                <option value={15}>15 minutos</option>
+                <option value={30}>30 minutos</option>
+                <option value={45}>45 minutos</option>
+                <option value={60}>1 hora</option>
+              </select>
               <textarea value={professionalForm.publicDescription} onChange={(e) => updateProfessionalForm('publicDescription', e.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="Descripcion publica" />
               <button disabled={isPending} className="h-12 w-full rounded-2xl bg-slate-950 text-sm font-black text-white disabled:opacity-50">
                 {selectedProfessionalId ? 'Guardar profesional' : 'Crear profesional'}

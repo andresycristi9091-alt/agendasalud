@@ -79,6 +79,7 @@ export function ClientWorkspace() {
   const [isPending, startTransition] = useTransition()
   const [profilePending, startProfileTransition] = useTransition()
 
+  const [showAllAppointments, setShowAllAppointments] = useState(false)
   const [day, setDay] = useState('monday')
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('13:00')
@@ -86,9 +87,10 @@ export function ClientWorkspace() {
   const [profileForm, setProfileForm] = useState(emptyProfileForm)
 
   const selectedProfessional = professionals.find((professional) => professional.id === selectedProfessionalId)
+  const appOrigin = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL ?? '')
   const publicLink = selectedProfessional
-    ? `https://agendasalud.vercel.app/agendar/${selectedProfessional.slug}`
-    : 'https://agendasalud.vercel.app/agendar'
+    ? `${appOrigin}/agendar/${selectedProfessional.slug}`
+    : `${appOrigin}/agendar`
 
   const refreshData = useCallback(async () => {
     if (!selectedProfessionalId) return
@@ -211,17 +213,39 @@ export function ClientWorkspace() {
   }
 
   async function deleteAvailability(id: string) {
-    await fetch(`/api/dashboard/availability/${id}`, { method: 'DELETE' })
-    setAvailability((current) => current.filter((item) => item.id !== id))
+    try {
+      const response = await fetch(`/api/dashboard/availability/${id}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        setMessageTone('error')
+        setMessage(data?.error ?? 'No pudimos eliminar este bloque.')
+        return
+      }
+      setAvailability((current) => current.filter((item) => item.id !== id))
+    } catch {
+      setMessageTone('error')
+      setMessage('Error de red al eliminar el bloque.')
+    }
   }
 
   async function updateAppointment(id: string, status: string) {
-    await fetch(`/api/dashboard/appointments/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
-    setAppointments((current) => current.map((item) => (item.id === id ? { ...item, status } : item)))
+    try {
+      const response = await fetch(`/api/dashboard/appointments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        setMessageTone('error')
+        setMessage(data?.error ?? 'No pudimos actualizar el estado de la cita.')
+        return
+      }
+      setAppointments((current) => current.map((item) => (item.id === id ? { ...item, status } : item)))
+    } catch {
+      setMessageTone('error')
+      setMessage('Error de red al actualizar la cita.')
+    }
   }
 
   const activeAvailability = availability.filter((item) => String(item.active ?? 'TRUE').toUpperCase() !== 'FALSE')
@@ -274,6 +298,33 @@ export function ClientWorkspace() {
             <p className="mt-2 text-sm leading-5 text-slate-400">{metric.help}</p>
           </div>
         ))}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-4">
+        <FunnelStep
+          step="1"
+          title="Perfil visible"
+          text="Foto, tipo de profesional, especialidad y descripcion aparecen en la pagina publica."
+          done={Boolean(selectedProfessional?.specialty)}
+        />
+        <FunnelStep
+          step="2"
+          title="Agenda publicada"
+          text="Define bloques semanales y duracion: 10, 15, 30, 45 minutos o 1 hora."
+          done={activeAvailability.length > 0}
+        />
+        <FunnelStep
+          step="3"
+          title="Link del paciente"
+          text="Comparte el enlace publico para que el paciente elija profesional, dia y hora."
+          done={Boolean(selectedProfessional?.slug)}
+        />
+        <FunnelStep
+          step="4"
+          title="Calendar conectado"
+          text="Usa el correo del profesional o un Calendar ID compartido con la service account."
+          done={Boolean(selectedProfessional?.calendarId || selectedProfessional?.email)}
+        />
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[420px_1fr]">
@@ -332,8 +383,17 @@ export function ClientWorkspace() {
               <Field label="URL fotografia">
                 <input value={profileForm.photoUrl} onChange={(event) => setProfileForm((current) => ({ ...current, photoUrl: event.target.value }))} className={inputClass} placeholder="https://..." />
               </Field>
-              <Field label="Google Calendar ID">
-                <input value={profileForm.calendarId} onChange={(event) => setProfileForm((current) => ({ ...current, calendarId: event.target.value }))} className={inputClass} placeholder="calendar@group.calendar.google.com" />
+              <Field label="Correo profesional">
+                <input value={profileForm.email} onChange={(event) => setProfileForm((current) => ({ ...current, email: event.target.value }))} className={inputClass} placeholder="profesional@centro.cl" />
+              </Field>
+              <Field label="Telefono profesional">
+                <input value={profileForm.phone} onChange={(event) => setProfileForm((current) => ({ ...current, phone: event.target.value }))} className={inputClass} placeholder="+56 9 1234 5678" />
+              </Field>
+              <Field label="Calendario del profesional">
+                <input value={profileForm.calendarId} onChange={(event) => setProfileForm((current) => ({ ...current, calendarId: event.target.value }))} className={inputClass} placeholder="correo@centro.cl o calendar@group.calendar.google.com" />
+                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                  Si queda vacio, AgendaSalud intentara calendarizar en el correo profesional. Ese calendario debe estar compartido con la cuenta service account de Google.
+                </p>
               </Field>
               <Field label="Duracion base de atencion">
                 <select value={profileForm.appointmentDurationDefault} onChange={(event) => setProfileForm((current) => ({ ...current, appointmentDurationDefault: Number(event.target.value) }))} className={inputClass}>
@@ -439,9 +499,18 @@ export function ClientWorkspace() {
                 <h3 className="mb-3 text-sm font-black text-slate-800">Proximas citas</h3>
                 <div className="space-y-3">
                   {appointments.length === 0 && <EmptyMini text="Aun no hay citas registradas." />}
-                  {appointments.slice(0, 5).map((appointment) => (
+                  {(showAllAppointments ? appointments : appointments.slice(0, 5)).map((appointment) => (
                     <AppointmentRow key={appointment.id} appointment={appointment} onUpdate={updateAppointment} />
                   ))}
+                  {appointments.length > 5 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllAppointments((v) => !v)}
+                      className="w-full rounded-2xl border border-slate-200 py-2 text-xs font-black text-slate-500 transition hover:bg-slate-50"
+                    >
+                      {showAllAppointments ? 'Ver menos' : `Ver todas (${appointments.length})`}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -468,6 +537,26 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="mb-2 block text-sm font-black text-slate-800">{label}</span>
       {children}
     </label>
+  )
+}
+
+function FunnelStep({ step, title, text, done }: { step: string; title: string; text: string; done: boolean }) {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,0.06)]">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563EB,#14B8A6)] text-sm font-black text-white">
+          {step}
+        </span>
+        <span className={[
+          'rounded-full border px-3 py-1 text-xs font-black',
+          done ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700',
+        ].join(' ')}>
+          {done ? 'Listo' : 'Pendiente'}
+        </span>
+      </div>
+      <h3 className="text-base font-black text-slate-950">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-500">{text}</p>
+    </div>
   )
 }
 
@@ -510,10 +599,16 @@ function AvailabilityRow({ block, onDelete }: { block: AvailabilityBlock; onDele
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const label = status === 'no_asiste' ? 'No asiste' : status
+  const map: Record<string, { label: string; classes: string }> = {
+    confirmada: { label: 'Confirmada', classes: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    completada: { label: 'Completada', classes: 'bg-blue-50 text-blue-700 border-blue-200' },
+    cancelada:  { label: 'Cancelada',  classes: 'bg-red-50 text-red-600 border-red-200' },
+    no_asiste:  { label: 'No asiste',  classes: 'bg-amber-50 text-amber-700 border-amber-200' },
+  }
+  const config = map[status] ?? { label: status, classes: 'bg-slate-50 text-slate-500 border-slate-200' }
   return (
-    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black capitalize text-emerald-700">
-      {label}
+    <span className={`rounded-full border px-3 py-1 text-xs font-black capitalize ${config.classes}`}>
+      {config.label}
     </span>
   )
 }

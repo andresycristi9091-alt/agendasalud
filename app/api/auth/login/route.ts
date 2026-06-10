@@ -17,20 +17,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Correo o contrasena incorrectos' }, { status: 401 })
   }
 
+  const centerId = user.centerId || process.env.DEFAULT_CENTER_ID || 'center-neuroplus'
+
   const response = NextResponse.json({
     user: {
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
-      centerId: user.centerId,
+      centerId,
     },
   })
   await setLocalUserSession(response, {
     email: user.email,
     name: user.name,
     role: user.role,
-    centerId: user.centerId,
+    centerId,
   })
 
   return response

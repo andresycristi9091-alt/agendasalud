@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 type Professional = {
@@ -108,7 +109,8 @@ export function PublicBookingPage({ slug }: { slug: string }) {
     }
   }, [loadSlots, selectedDate])
 
-  const days = useMemo(() => getDaysToShow(21), [])
+  const [dateRange, setDateRange] = useState(21)
+  const days = useMemo(() => getDaysToShow(dateRange), [dateRange])
   const availableSlots = slots.filter((slot) => slot.available)
   const groupedSlots = groupSlots(availableSlots)
 
@@ -196,6 +198,8 @@ export function PublicBookingPage({ slug }: { slug: string }) {
                 <DateStep
                   days={days}
                   selectedDate={selectedDate}
+                  canLoadMore={dateRange < 60}
+                  onLoadMore={() => setDateRange((r) => Math.min(r + 21, 60))}
                   onSelect={(date) => {
                     setDate(date)
                     setStep('slot')
@@ -336,10 +340,14 @@ function Progress({ step }: { step: Step }) {
 function DateStep({
   days,
   selectedDate,
+  canLoadMore,
+  onLoadMore,
   onSelect,
 }: {
   days: string[]
   selectedDate: string
+  canLoadMore: boolean
+  onLoadMore: () => void
   onSelect: (date: string) => void
 }) {
   return (
@@ -377,6 +385,16 @@ function DateStep({
           )
         })}
       </div>
+
+      {canLoadMore && (
+        <button
+          type="button"
+          onClick={onLoadMore}
+          className="mt-4 w-full rounded-2xl border border-slate-200 py-3 text-sm font-black text-slate-500 transition hover:bg-slate-50"
+        >
+          Ver mas fechas
+        </button>
+      )}
     </section>
   )
 }
@@ -700,23 +718,82 @@ function SuccessState({
   selectedSlot: TimeSlot | null
   professional: Professional
 }) {
+  const calendarUrl = selectedSlot
+    ? buildGoogleCalendarUrl({
+        title:       `Cita con ${professional.name}`,
+        description: `${professional.specialty} - ${professional.centerName || 'AgendaSalud'}`,
+        date:        selectedDate,
+        startTime:   selectedSlot.startTime,
+        endTime:     selectedSlot.endTime,
+      })
+    : null
+
   return (
     <div className="rounded-[32px] border border-slate-200 bg-white p-8 text-center shadow-[0_18px_55px_rgba(15,23,42,0.08)]" role="status">
       <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 text-3xl font-black text-white">
-        OK
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+          <path d="M8 18L15 25L28 11" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </div>
       <h2 className="mt-6 text-3xl font-black tracking-tight text-slate-950">Tu cita fue agendada</h2>
       <p className="mx-auto mt-3 max-w-md text-base leading-7 text-slate-500">
-        Recibiras la informacion de confirmacion en tu correo o por el medio definido por el centro de salud.
+        Recibiras la confirmacion en tu correo electronico en los proximos minutos.
       </p>
       <div className="mx-auto mt-6 max-w-md rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-left">
         <SummaryRow label="Atencion" value={`${professional.name} - ${professional.specialty}`} />
         <div className="mt-4">
-          <SummaryRow label="Fecha y hora" value={`${formatReadableDate(selectedDate)} · ${selectedSlot?.startTime ?? ''}`} />
+          <SummaryRow label="Fecha y hora" value={`${formatReadableDate(selectedDate)} · ${selectedSlot?.startTime ?? ''} - ${selectedSlot?.endTime ?? ''}`} />
         </div>
+      </div>
+
+      <div className="mx-auto mt-6 flex max-w-md flex-col gap-3 sm:flex-row">
+        {calendarUrl && (
+          <a
+            href={calendarUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="2"/>
+              <path d="M3 9h18M8 2v4M16 2v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            Agregar a Google Calendar
+          </a>
+        )}
+        <Link
+          href="/agendar"
+          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white transition hover:bg-blue-700"
+        >
+          Agendar otra hora
+        </Link>
       </div>
     </div>
   )
+}
+
+function buildGoogleCalendarUrl({
+  title,
+  description,
+  date,
+  startTime,
+  endTime,
+}: {
+  title: string
+  description: string
+  date: string
+  startTime: string
+  endTime: string
+}): string {
+  const toCalDate = (d: string, t: string) => `${d.replace(/-/g, '')}T${t.replace(':', '')}00`
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    details: description,
+    dates: `${toCalDate(date, startTime)}/${toCalDate(date, endTime)}`,
+    ctz: 'America/Santiago',
+  })
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
 }
 
 function TrustCard({ value, label }: { value: string; label: string }) {

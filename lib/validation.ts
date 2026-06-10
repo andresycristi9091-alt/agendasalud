@@ -1,18 +1,26 @@
 import { z } from 'zod'
 
 export const AppointmentSchema = z.object({
-  professionalSlug: z.string().min(1),
+  professionalSlug: z.string().min(1).max(80).regex(/^[a-z0-9-]+$/),
   patientName:      z.string().min(2).max(100),
-  patientEmail:     z.string().email(),
+  patientEmail:     z.string().email().max(254),
   patientPhone:     z.string().min(8).max(20),
   patientRut:       z.string().max(12).optional().default(''),
   reason:           z.string().max(300).optional().default(''),
-  date:             z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  date:             z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((d) => {
+    const parsed = new Date(d)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return parsed >= today
+  }, { message: 'La fecha debe ser hoy o posterior' }),
   startTime:        z.string().regex(/^\d{2}:\d{2}$/),
   endTime:          z.string().regex(/^\d{2}:\d{2}$/),
   acceptTerms:      z.boolean().refine((v) => v === true, {
     message: 'Debes aceptar los términos de uso',
   }),
+}).refine((data) => data.startTime < data.endTime, {
+  message: 'La hora de inicio debe ser anterior a la hora de termino',
+  path: ['endTime'],
 })
 
 export const AvailabilitySchema = z.object({
@@ -35,7 +43,10 @@ export const AdminProfessionalSchema = z.object({
   centerName: z.string().min(2).max(120).default('NeuroPlus'),
   email: z.string().email().optional().or(z.literal('')).default(''),
   phone: z.string().max(30).optional().default(''),
-  calendarId: z.string().max(220).optional().default(''),
+  calendarId: z.string().max(220).optional().default('').refine(
+    (v) => !v || /^[a-zA-Z0-9._%+\-@]+$/.test(v),
+    { message: 'Formato de Calendar ID invalido' }
+  ),
   publicDescription: z.string().max(500).optional().default(''),
   appointmentDurationDefault: z.coerce.number().int().min(10).max(120).default(30),
   timezone: z.string().default('America/Santiago'),
