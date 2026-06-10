@@ -102,6 +102,7 @@ export function ClientWorkspace() {
   const [duration, setDuration] = useState(30)
   const [profileForm, setProfileForm] = useState(emptyProfileForm)
   const [manualForm, setManualForm] = useState(emptyManualForm)
+  const [workDate, setWorkDate] = useState(getTodayISO())
 
   const selectedProfessional = professionals.find((professional) => professional.id === selectedProfessionalId)
   const appOrigin = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL ?? '')
@@ -275,6 +276,14 @@ export function ClientWorkspace() {
 
   const activeAvailability = availability.filter((item) => String(item.active ?? 'TRUE').toUpperCase() !== 'FALSE')
   const metrics = useMemo(() => buildMetrics(appointments, activeAvailability), [appointments, activeAvailability])
+  const workdayAppointments = useMemo(
+    () => appointments
+      .filter((appointment) => appointment.date === workDate)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    [appointments, workDate]
+  )
+  const nextAppointment = workdayAppointments.find((appointment) => appointment.status === 'confirmada') ?? workdayAppointments[0]
+  const dailyInsights = useMemo(() => buildDailyInsights(workdayAppointments), [workdayAppointments])
 
   return (
     <div className="space-y-8">
@@ -282,13 +291,13 @@ export function ClientWorkspace() {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="mb-3 inline-flex rounded-full border border-white/20 bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-white/85">
-              {me?.isAdmin ? 'Panel NeuroPlus Admin' : 'Panel del centro'}
+              {me?.isAdmin ? 'Vista profesional administrable' : 'Dashboard profesional'}
             </p>
             <h1 className="max-w-3xl text-3xl font-black leading-tight tracking-tight sm:text-5xl">
-              Gestiona profesionales, publica horarios y recibe reservas sin llamadas.
+              Tu agenda, pacientes y horarios en un solo lugar.
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-white/78">
-              Selecciona un profesional de tu centro, abre disponibilidad y comparte su link publico con pacientes.
+              Revisa la jornada, habilita horas, crea citas manuales y mantén el estado de cada paciente actualizado sin salir del panel.
             </p>
           </div>
 
@@ -315,7 +324,24 @@ export function ClientWorkspace() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+        <ProfessionalTodayPanel
+          workDate={workDate}
+          onDateChange={setWorkDate}
+          appointments={workdayAppointments}
+          nextAppointment={nextAppointment}
+          insights={dailyInsights}
+          onUpdate={updateAppointment}
+        />
+        <QuickActionPanel
+          publicLink={publicLink}
+          copied={copied}
+          onCopy={copyPublicLink}
+          selectedProfessional={selectedProfessional}
+        />
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {metrics.map((metric) => (
           <div key={metric.label} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,0.06)]">
             <p className="text-sm font-bold text-slate-500">{metric.label}</p>
@@ -353,7 +379,7 @@ export function ClientWorkspace() {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[420px_1fr]">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_8px_28px_rgba(15,23,42,0.06)]">
+        <div id="perfil" className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_8px_28px_rgba(15,23,42,0.06)]">
           <div className="mb-6 rounded-3xl border border-slate-200 bg-slate-50 p-4">
             <label className="block">
               <span className="mb-2 block text-sm font-black text-slate-800">Profesional</span>
@@ -448,7 +474,7 @@ export function ClientWorkspace() {
             </p>
           </div>
 
-          <form onSubmit={createAvailability} className="space-y-4">
+          <form id="disponibilidad" onSubmit={createAvailability} className="space-y-4">
             <CalendarAvailabilityPicker
               month={calendarMonth}
               selectedDates={selectedDates}
@@ -499,7 +525,7 @@ export function ClientWorkspace() {
           </form>
         </div>
 
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_8px_28px_rgba(15,23,42,0.06)]">
+        <div id="agenda" className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_8px_28px_rgba(15,23,42,0.06)]">
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Citas y bloques</p>
@@ -601,6 +627,145 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="mb-2 block text-sm font-black text-slate-800">{label}</span>
       {children}
     </label>
+  )
+}
+
+function ProfessionalTodayPanel({
+  workDate,
+  onDateChange,
+  appointments,
+  nextAppointment,
+  insights,
+  onUpdate,
+}: {
+  workDate: string
+  onDateChange: (date: string) => void
+  appointments: Appointment[]
+  nextAppointment?: Appointment
+  insights: Array<{ label: string; value: string; tone: string }>
+  onUpdate: (id: string, status: string) => void
+}) {
+  return (
+    <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.08)]">
+      <div className="border-b border-slate-200 bg-slate-50 p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Jornada profesional</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Agenda del día</h2>
+            <p className="mt-1 text-sm leading-6 text-slate-500">Gestiona pacientes, asistencia y estados desde esta vista.</p>
+          </div>
+          <input
+            type="date"
+            value={workDate}
+            onChange={(event) => onDateChange(event.target.value)}
+            className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-5 p-5 xl:grid-cols-[0.8fr_1.2fr]">
+        <div className="rounded-3xl bg-[linear-gradient(135deg,#1D4ED8,#0D9488)] p-5 text-white">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-white/60">Próximo paciente</p>
+          {nextAppointment ? (
+            <>
+              <h3 className="mt-4 text-2xl font-black tracking-tight">{nextAppointment.patientName}</h3>
+              <p className="mt-2 text-sm font-semibold text-white/80">{nextAppointment.startTime} - {nextAppointment.endTime}</p>
+              <p className="mt-1 break-all text-sm text-white/65">{nextAppointment.patientEmail}</p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <button type="button" onClick={() => onUpdate(nextAppointment.id, 'completada')} className="rounded-2xl bg-white px-4 py-2 text-xs font-black text-blue-700 transition hover:-translate-y-0.5">
+                  Atendido
+                </button>
+                <button type="button" onClick={() => onUpdate(nextAppointment.id, 'no_asiste')} className="rounded-2xl border border-white/25 px-4 py-2 text-xs font-black text-white transition hover:bg-white/10">
+                  No asiste
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="mt-5 rounded-2xl border border-white/15 bg-white/10 p-4 text-sm font-semibold text-white/75">
+              No hay pacientes agendados para esta fecha.
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div className="grid gap-3 sm:grid-cols-4">
+            {insights.map((item) => (
+              <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-bold text-slate-500">{item.label}</p>
+                <p className={`mt-1 text-2xl font-black ${item.tone}`}>{item.value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 max-h-[310px] space-y-3 overflow-auto pr-1">
+            {appointments.length === 0 && <EmptyMini text="Sin pacientes para esta fecha." />}
+            {appointments.map((appointment) => (
+              <CompactAppointmentRow key={appointment.id} appointment={appointment} onUpdate={onUpdate} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function QuickActionPanel({
+  publicLink,
+  copied,
+  onCopy,
+  selectedProfessional,
+}: {
+  publicLink: string
+  copied: boolean
+  onCopy: () => void
+  selectedProfessional?: Professional
+}) {
+  return (
+    <div className="rounded-[32px] border border-slate-200 bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)]">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Acciones rápidas</p>
+      <h2 className="mt-2 text-2xl font-black text-slate-950">Operar agenda</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-500">
+        {selectedProfessional ? `${selectedProfessional.name} · ${selectedProfessional.specialty}` : 'Selecciona un profesional para operar.'}
+      </p>
+
+      <div className="mt-5 grid gap-3">
+        <a href="#disponibilidad" className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-blue-50">
+          <p className="font-black text-slate-950">Habilitar horas</p>
+          <p className="mt-1 text-sm text-slate-500">Publica bloques por día, semana o mes.</p>
+        </a>
+        <a href="#agenda" className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-blue-50">
+          <p className="font-black text-slate-950">Crear cita manual</p>
+          <p className="mt-1 text-sm text-slate-500">Registra horas tomadas fuera de la web.</p>
+        </a>
+        <a href="#perfil" className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-blue-50">
+          <p className="font-black text-slate-950">Editar perfil público</p>
+          <p className="mt-1 text-sm text-slate-500">Foto, especialidad, descripción y Calendar.</p>
+        </a>
+      </div>
+
+      <div className="mt-5 rounded-3xl border border-blue-100 bg-blue-50 p-4">
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-700">Link clientes</p>
+        <p className="mt-2 break-all text-xs font-semibold text-slate-600">{publicLink}</p>
+        <button type="button" onClick={onCopy} className="mt-4 h-11 w-full rounded-2xl bg-blue-600 text-sm font-black text-white transition hover:-translate-y-0.5">
+          {copied ? 'Link copiado' : 'Copiar link'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function CompactAppointmentRow({ appointment, onUpdate }: { appointment: Appointment; onUpdate: (id: string, status: string) => void }) {
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="font-black text-slate-950">{appointment.startTime} · {appointment.patientName}</p>
+        <p className="mt-1 text-xs font-semibold text-slate-500">{appointment.patientPhone} · {appointment.patientEmail}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusBadge status={appointment.status} />
+        <button type="button" onClick={() => onUpdate(appointment.id, 'completada')} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">Atendido</button>
+        <button type="button" onClick={() => onUpdate(appointment.id, 'no_asiste')} className="rounded-xl border border-amber-200 px-3 py-2 text-xs font-black text-amber-700">No asiste</button>
+      </div>
+    </div>
   )
 }
 
@@ -877,6 +1042,19 @@ function buildMetrics(appointments: Appointment[], availability: AvailabilityBlo
     { label: 'No atendidos', value: String(noShow.length), help: 'Pacientes no presentados.' },
     { label: 'Pendientes', value: String(confirmed.length), help: 'Citas confirmadas por atender.' },
     { label: 'Bloques activos', value: String(availability.length), help: 'Horarios publicados semanalmente.' },
+  ]
+}
+
+function buildDailyInsights(appointments: Appointment[]) {
+  const completed = appointments.filter((appointment) => appointment.status === 'completada')
+  const noShow = appointments.filter((appointment) => appointment.status === 'no_asiste')
+  const pending = appointments.filter((appointment) => appointment.status === 'confirmada')
+
+  return [
+    { label: 'Total', value: String(appointments.length), tone: 'text-slate-950' },
+    { label: 'Atendidos', value: String(completed.length), tone: 'text-blue-700' },
+    { label: 'No asiste', value: String(noShow.length), tone: 'text-amber-700' },
+    { label: 'Pendientes', value: String(pending.length), tone: 'text-emerald-700' },
   ]
 }
 

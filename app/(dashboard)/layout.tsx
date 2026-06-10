@@ -23,7 +23,7 @@ export default async function DashboardLayout({
 
             <nav className="hidden items-center gap-1 md:flex">
               <Link href="/dashboard" className="nav-link rounded-xl px-3 py-2 text-sm font-bold">
-                Panel cliente
+                Panel profesional
               </Link>
               <Link href="/dashboard/perfil" className="nav-link rounded-xl px-3 py-2 text-sm font-bold">
                 Perfil

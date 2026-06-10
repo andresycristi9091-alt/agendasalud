@@ -48,6 +48,18 @@ Ultimo foco implementado:
   - Pendientes.
 - Panel usuario permite crear citas manuales desde el dashboard. Estas se guardan en Sheets y se intentan crear en Google Calendar.
 - Panel usuario permite marcar citas como completadas, canceladas o no asiste.
+- Terminologia operativa:
+  - Cliente = paciente/persona que solicita hora.
+  - Profesional = usuario que administra su agenda, disponibilidad, citas y estadisticas.
+  - Administrador = usuario que administra centros, usuarios, profesionales y estadisticas globales.
+- Dashboard profesional modernizado:
+  - Entrada como centro de mando de jornada.
+  - Selector de fecha de trabajo.
+  - Proximo paciente destacado.
+  - Lista compacta de pacientes del dia con acciones Atendido/No asiste.
+  - Estadisticas diarias interactivas: total, atendidos, no asiste, pendientes.
+  - Panel de acciones rapidas hacia disponibilidad, cita manual y perfil publico.
+  - Menu superior actualizado a `Panel profesional`.
 - Calendarizacion automatica:
   - Primero usa `professional.calendarId`.
   - Luego `professional.email`.
@@ -94,6 +106,7 @@ Para produccion sigue siendo recomendable definir:
 - `components/AgendaSaludLoginPage.tsx`
 - `components/admin/AdminWorkspace.tsx`
 - `components/public/ProfessionalDirectoryPage.tsx`
+- `app/(dashboard)/layout.tsx`
 - `components/dashboard/ClientWorkspace.tsx`
 - `components/public/PublicBookingPage.tsx`
 - `lib/appointments.ts`
@@ -138,6 +151,7 @@ Contexto:
 - Usuario normal maneja agenda diaria, disponibilidad, citas manuales y estados sin salir del panel.
 - Citas manuales usan `/api/dashboard/appointments` POST y pasan por `bookAppointmentForProfessional`.
 - La entrada publica `/agendar` debe sentirse como funnel visual: seleccionar profesional en tarjetas, revisar resumen y entrar a la agenda individual.
+- El dashboard profesional debe priorizar la operacion diaria por sobre configuraciones: jornada, proximo paciente, estados y accesos rapidos primero; ajustes despues.
 
 Prioridades siguientes:
 1. Probar flujo completo admin:
