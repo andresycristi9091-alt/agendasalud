@@ -14,17 +14,31 @@ export function formatRut(rut: string): string {
 }
 
 export function formatFecha(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-CL', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+
+  const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+  const meses = [
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre',
+  ]
+
+  return `${dias[date.getDay()]}, ${date.getDate()} de ${meses[date.getMonth()]} de ${date.getFullYear()}`
 }
 
 export function formatHora(iso: string): string {
-  return new Date(iso).toLocaleTimeString('es-CL', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }

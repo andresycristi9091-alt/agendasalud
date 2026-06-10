@@ -39,9 +39,9 @@ export function TarjetaCita({ cita }: TarjetaCitaProps) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-medium text-slate-900 truncate">
-            {cita.paciente.nombre} {cita.paciente.apellido}
+            {cita.paciente?.nombre ?? 'Paciente'} {cita.paciente?.apellido ?? ''}
           </p>
-          <p className="text-xs text-slate-400">{cita.paciente.rut}</p>
+          <p className="text-xs text-slate-400">{cita.paciente?.rut ?? 'Sin RUT'}</p>
         </div>
         <span className="text-xs text-slate-500 shrink-0 font-mono">
           {formatHora(cita.fecha_hora)}

@@ -6,10 +6,11 @@ type AgendaDiaProps = {
   fecha: string
 }
 
-export function AgendaDia({ citas, fecha }: AgendaDiaProps) {
-  const porMedico = citas.reduce<Record<string, CitaConRelaciones[]>>(
+export function AgendaDia({ citas }: AgendaDiaProps) {
+  const citasValidas = citas.filter((cita) => cita && cita.id)
+  const porMedico = citasValidas.reduce<Record<string, CitaConRelaciones[]>>(
     (acc, cita) => {
-      const key = cita.medico_id
+      const key = cita.medico_id ?? 'sin-medico'
       if (!acc[key]) acc[key] = []
       acc[key].push(cita)
       return acc
@@ -17,19 +18,16 @@ export function AgendaDia({ citas, fecha }: AgendaDiaProps) {
     {}
   )
 
-  const canceladas = citas.filter((c) => c.estado === 'cancelada').length
-  const noShows    = citas.filter((c) => c.estado === 'no_show').length
+  const canceladas = citasValidas.filter((c) => c.estado === 'cancelada').length
+  const noShows = citasValidas.filter((c) => c.estado === 'no_show').length
 
-  if (citas.length === 0) {
+  if (citasValidas.length === 0) {
     return (
       <div className="text-center py-20 text-slate-400">
-        <p className="text-5xl mb-4">📋</p>
-        <p className="font-medium text-slate-600">No hay citas para este día</p>
+        <p className="text-5xl mb-4">--</p>
+        <p className="font-medium text-slate-600">No hay citas para este dia</p>
         <p className="text-sm mt-2">
-          <a
-            href="/dashboard/nueva-cita"
-            className="text-blue-500 hover:underline"
-          >
+          <a href="/dashboard/nueva-cita" className="text-blue-500 hover:underline">
             + Crear primera cita
           </a>
         </p>
@@ -40,8 +38,8 @@ export function AgendaDia({ citas, fecha }: AgendaDiaProps) {
   return (
     <div className="space-y-8">
       {Object.entries(porMedico).map(([medicoId, citasMedico]) => {
-        const medico      = citasMedico[0].medico
-        const nombreMedico = medico.profile?.nombre ?? 'Médico sin nombre'
+        const medico = citasMedico[0].medico
+        const nombreMedico = medico?.profile?.nombre ?? 'Medico sin nombre'
 
         return (
           <div key={medicoId}>
@@ -50,13 +48,12 @@ export function AgendaDia({ citas, fecha }: AgendaDiaProps) {
               <h3 className="text-sm font-semibold text-slate-700">
                 {nombreMedico}
                 <span className="font-normal text-slate-400 ml-1">
-                  — {medico.especialidad}
+                  - {medico?.especialidad ?? 'Sin especialidad'}
                 </span>
               </h3>
-              <span className="text-xs text-slate-300">
-                ({citasMedico.length})
-              </span>
+              <span className="text-xs text-slate-300">({citasMedico.length})</span>
             </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {citasMedico.map((cita) => (
                 <TarjetaCita key={cita.id} cita={cita} />
@@ -68,13 +65,13 @@ export function AgendaDia({ citas, fecha }: AgendaDiaProps) {
 
       <div className="pt-6 border-t flex flex-wrap gap-6 text-sm text-slate-500">
         <span>
-          📊 <strong className="text-slate-900">{citas.length}</strong> citas totales
+          <strong className="text-slate-900">{citasValidas.length}</strong> citas totales
         </span>
         <span>
-          ❌ <strong className="text-slate-900">{canceladas}</strong> canceladas
+          <strong className="text-slate-900">{canceladas}</strong> canceladas
         </span>
         <span>
-          ⏰ <strong className="text-slate-900">{noShows}</strong> no-shows
+          <strong className="text-slate-900">{noShows}</strong> no-shows
         </span>
       </div>
     </div>
