@@ -239,6 +239,9 @@ export function ClientWorkspace() {
   }
 
   async function deleteAvailability(id: string) {
+    const block = availability.find((item) => item.id === id)
+    const label = block ? `${block.dayOfWeek} ${block.startTime}-${block.endTime}` : 'este bloque'
+    if (!window.confirm(`Eliminar el bloque ${label}? Los pacientes ya no podran reservar en esas horas.`)) return
     try {
       const response = await fetch(`/api/dashboard/availability/${id}`, { method: 'DELETE' })
       if (!response.ok) {
@@ -255,6 +258,11 @@ export function ClientWorkspace() {
   }
 
   async function updateAppointment(id: string, status: string) {
+    if (status === 'cancelada') {
+      const appointment = appointments.find((item) => item.id === id)
+      const label = appointment ? `de ${appointment.patientName} (${appointment.date} ${appointment.startTime})` : 'seleccionada'
+      if (!window.confirm(`Cancelar la cita ${label}? Esta accion notifica el cambio de estado.`)) return
+    }
     try {
       const response = await fetch(`/api/dashboard/appointments/${id}`, {
         method: 'PATCH',
@@ -295,8 +303,18 @@ export function ClientWorkspace() {
               {me?.isAdmin ? 'Vista profesional administrable' : 'Dashboard profesional'}
             </p>
             <h1 className="max-w-3xl text-3xl font-black leading-tight tracking-tight sm:text-5xl">
-              Tu agenda, pacientes y horarios en un solo lugar.
+              {selectedProfessional
+                ? `Hola, ${selectedProfessional.name.split(' ')[0]}. Tu jornada en un solo lugar.`
+                : 'Tu agenda, pacientes y horarios en un solo lugar.'}
             </h1>
+            {selectedProfessional && (
+              <p className="mt-2 text-sm font-bold text-white/70">
+                {selectedProfessional.professionalType || selectedProfessional.specialty}
+                {selectedProfessional.specialty && selectedProfessional.professionalType && selectedProfessional.professionalType !== selectedProfessional.specialty
+                  ? ` · ${selectedProfessional.specialty}`
+                  : ''}
+              </p>
+            )}
             <p className="mt-4 max-w-2xl text-base leading-7 text-white/78">
               Revisa la jornada, habilita horas, crea citas manuales y mantén el estado de cada paciente actualizado sin salir del panel.
             </p>
@@ -454,7 +472,7 @@ export function ClientWorkspace() {
               </form>
             </div>
           ) : (
-            <PublicProfileLockedCard professional={selectedProfessional} />
+            <PublicProfileLockedCard professional={selectedProfessional} publicLink={publicLink} />
           )}
 
           <div className="mb-5">
@@ -579,6 +597,22 @@ export function ClientWorkspace() {
           )}
         </div>
       </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs font-semibold leading-5 text-slate-500">
+            Los datos de pacientes que ves aqui son confidenciales. Usalos solo para gestionar la atencion y no los
+            compartas fuera de la plataforma (Ley 19.628 sobre proteccion de datos personales).
+          </p>
+          <span className="inline-flex w-fit flex-shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            Datos protegidos
+          </span>
+        </div>
+      </section>
     </div>
   )
 
@@ -621,26 +655,94 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function PublicProfileLockedCard({ professional }: { professional?: Professional }) {
+function PublicProfileLockedCard({ professional, publicLink }: { professional?: Professional; publicLink?: string }) {
   return (
-    <div className="mb-6 rounded-3xl border border-amber-100 bg-amber-50 p-5">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">Perfil publico</p>
-      <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Informacion administrada</h2>
-      <p className="mt-2 text-sm leading-6 text-slate-600">
-        La ficha que ven los clientes la define solamente el administrador del centro. Aqui puedes operar agenda,
-        disponibilidad, citas y estados sin modificar la informacion publica.
-      </p>
-      {professional && (
-        <div className="mt-5 rounded-2xl border border-amber-100 bg-white p-4">
-          <p className="font-black text-slate-950">{professional.name}</p>
-          <p className="mt-1 text-sm font-semibold text-slate-600">
-            {professional.professionalType || professional.specialty} - {professional.specialty}
-          </p>
+    <div className="mb-6 space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Tu ficha publica</p>
+        <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Como te ven los pacientes</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Vista de solo lectura. Para cambiar foto, especialidad o descripcion, contacta al administrador del centro.
+        </p>
+      </div>
+
+      {professional ? (
+        <>
+          <div className="flex gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <ProfessionalAvatar professional={professional} size="lg" />
+            <div className="min-w-0">
+              <p className="truncate text-lg font-black text-slate-950">{professional.name}</p>
+              <p className="text-sm font-semibold text-teal-700">{professional.professionalType || professional.specialty}</p>
+              {professional.professionalType && professional.specialty && professional.professionalType !== professional.specialty && (
+                <p className="text-xs text-slate-400">{professional.specialty}</p>
+              )}
+            </div>
+          </div>
+
           {professional.publicDescription && (
-            <p className="mt-3 text-sm leading-6 text-slate-500">{professional.publicDescription}</p>
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Descripcion</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{professional.publicDescription}</p>
+            </div>
           )}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ProfileInfoChip label="Correo" value={professional.email || 'No configurado'} empty={!professional.email} />
+            <ProfileInfoChip label="Telefono" value={professional.phone || 'No configurado'} empty={!professional.phone} />
+            <ProfileInfoChip
+              label="Duracion base"
+              value={professional.appointmentDurationDefault ? `${professional.appointmentDurationDefault} min por cita` : '30 min por cita'}
+            />
+            <ProfileInfoChip
+              label="Calendario"
+              value={professional.calendarId ? 'Conectado' : 'Usando correo profesional'}
+              green={Boolean(professional.calendarId)}
+            />
+          </div>
+
+          {publicLink && (
+            <a
+              href={publicLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-teal-200 bg-teal-50 text-sm font-black text-teal-700 transition hover:bg-teal-100"
+            >
+              Ver mi perfil publico
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </a>
+          )}
+        </>
+      ) : (
+        <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm font-semibold text-amber-700">
+          Solicita al administrador que asigne un profesional a tu cuenta para ver tu ficha publica.
         </div>
       )}
+    </div>
+  )
+}
+
+function ProfessionalAvatar({ professional, size = 'md' }: { professional: Professional; size?: 'md' | 'lg' }) {
+  const dim = size === 'lg' ? 'h-16 w-16 text-base' : 'h-10 w-10 text-xs'
+  if (professional.photoUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={professional.photoUrl} alt={professional.name} className={`${dim} flex-shrink-0 rounded-2xl object-cover`} />
+  }
+  return (
+    <div className={`${dim} flex flex-shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563EB,#14B8A6)] font-black text-white`}>
+      {professional.name.slice(0, 2).toUpperCase() || 'NP'}
+    </div>
+  )
+}
+
+function ProfileInfoChip({ label, value, empty = false, green = false }: { label: string; value: string; empty?: boolean; green?: boolean }) {
+  return (
+    <div className={`rounded-2xl border p-3 ${green ? 'border-emerald-100 bg-emerald-50' : 'border-slate-100 bg-slate-50'}`}>
+      <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">{label}</p>
+      <p className={`mt-1 text-sm font-semibold ${green ? 'text-emerald-700' : empty ? 'text-slate-400' : 'text-slate-700'}`}>{value}</p>
     </div>
   )
 }
@@ -709,16 +811,13 @@ function ProfessionalModuleGrid({
             meta="Solo Admin"
           />
         ) : (
-          <div className="rounded-[26px] border border-amber-100 bg-amber-50 p-5">
-            <Icon name="user" />
-            <div className="mt-5">
-              <h3 className="text-lg font-black text-slate-950">Perfil administrado</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                La informacion visible para clientes solo la modifica el administrador.
-              </p>
-              <p className="mt-4 rounded-full bg-white px-3 py-1 text-xs font-black text-amber-700">Solo lectura</p>
-            </div>
-          </div>
+          <ModuleCard
+            href="#perfil"
+            icon="user"
+            title="Mi ficha publica"
+            description="Ve como apareces ante los pacientes. Solo lectura."
+            meta="Gestionado por Admin"
+          />
         )}
         <button
           type="button"
@@ -933,10 +1032,10 @@ function QuickActionPanel({
             <p className="mt-1 text-sm text-slate-500">Foto, especialidad, descripcion y Calendar.</p>
           </a>
         ) : (
-          <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
-            <p className="font-black text-slate-950">Perfil publico protegido</p>
-            <p className="mt-1 text-sm text-slate-600">Solo el administrador modifica lo que ven los clientes.</p>
-          </div>
+          <a href="#perfil" className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-blue-50">
+            <p className="font-black text-slate-950">Ver mi ficha publica</p>
+            <p className="mt-1 text-sm text-slate-500">Como te ven los pacientes. Solo lectura.</p>
+          </a>
         )}
       </div>
 

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { PublicTrustFooter } from './PublicTrustFooter'
 
 type Professional = {
   id?: string
@@ -262,6 +263,8 @@ export function PublicBookingPage({ slug }: { slug: string }) {
           />
         </aside>
       </section>
+
+      <PublicTrustFooter />
     </main>
   )
 }
@@ -432,7 +435,11 @@ function SlotStep({
         <p className="mt-2 text-sm leading-6 text-slate-500">{formatReadableDate(date)} - America/Santiago</p>
       </div>
 
-      {loading && <SlotSkeleton />}
+      {loading && (
+        <div aria-busy="true" aria-label="Cargando horarios disponibles">
+          <SlotSkeleton />
+        </div>
+      )}
       {error && <EmptyState title={error} action="Intentar con otra fecha" onAction={onBack} />}
       {!loading && !error && !hasSlots && (
         <EmptyState
@@ -746,6 +753,15 @@ function SuccessState({
         </div>
       </div>
 
+      <div className="mx-auto mt-6 max-w-md rounded-3xl border border-slate-200 bg-slate-50 p-5 text-left">
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Que sigue ahora</p>
+        <ol className="mt-3 space-y-3">
+          <NextStepItem number="1" text="Revisa tu correo: te enviaremos la confirmacion con todos los detalles." />
+          <NextStepItem number="2" text="Llega 10 minutos antes de tu hora con tu documento de identidad." />
+          <NextStepItem number="3" text="Si necesitas cancelar o cambiar tu hora, responde el correo de confirmacion o contacta al centro." />
+        </ol>
+      </div>
+
       <div className="mx-auto mt-6 flex max-w-md flex-col gap-3 sm:flex-row">
         {calendarUrl && (
           <a
@@ -769,6 +785,15 @@ function SuccessState({
         </Link>
       </div>
     </div>
+  )
+}
+
+function NextStepItem({ number, text }: { number: string; text: string }) {
+  return (
+    <li className="flex items-start gap-3">
+      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-black text-white">{number}</span>
+      <span className="text-sm leading-6 text-slate-600">{text}</span>
+    </li>
   )
 }
 

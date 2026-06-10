@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import { PublicTrustFooter } from './PublicTrustFooter'
 
 type Professional = {
   id: string
@@ -152,6 +153,8 @@ export function ProfessionalDirectoryPage() {
           </div>
         )}
       </section>
+
+      <PublicTrustFooter />
     </main>
   )
 }

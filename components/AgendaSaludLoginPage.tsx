@@ -34,45 +34,42 @@ export default function AgendaSaludLoginPage() {
 
     const loginEmail = email.trim()
 
-    if (['admin', 'admin@agendasalud.cl'].includes(loginEmail.toLowerCase()) && password === 'admin') {
-      const bootstrap = await fetch('/api/admin/bootstrap', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: loginEmail.toLowerCase(), password: 'admin' }),
-      })
+    // Intentar login via ruta unificada (admin hardcodeado + usuarios internos Sheets)
+    const adminLogin = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: loginEmail.toLowerCase(), password }),
+    })
 
-      if (!bootstrap.ok) {
-        setError('No se pudo iniciar el acceso administrador. Intenta nuevamente.')
-        setLoading(false)
-        return
-      }
-
+    if (adminLogin.ok) {
       window.location.assign('/dashboard')
       return
     }
 
+    // Intentar Supabase Auth
     const { error: supabaseError } = await supabase.auth.signInWithPassword({ email: loginEmail, password })
 
-    if (supabaseError) {
-      const internalLogin = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password }),
-      })
-
-      if (internalLogin.ok) {
-        router.push('/dashboard')
-        router.refresh()
-        return
-      }
-
-      setError('Correo o contrasena incorrectos. Verifica tus credenciales.')
-      setLoading(false)
+    if (!supabaseError) {
+      router.push('/dashboard')
+      router.refresh()
       return
     }
 
-    router.push('/dashboard')
-    router.refresh()
+    // Intentar usuarios internos de Sheets (fallback)
+    const internalLogin = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: loginEmail, password }),
+    })
+
+    if (internalLogin.ok) {
+      router.push('/dashboard')
+      router.refresh()
+      return
+    }
+
+    setError('Correo o contrasena incorrectos. Verifica tus credenciales.')
+    setLoading(false)
   }
 
   async function sendEmailAccess() {

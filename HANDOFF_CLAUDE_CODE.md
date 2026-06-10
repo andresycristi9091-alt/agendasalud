@@ -94,11 +94,48 @@ Ultimo foco implementado:
   - `ADMIN_SESSION_SECRET` ya no provoca 500 si falta; usa fallback estable para no romper `/dashboard`.
   - `ADMIN_EMAILS` ya no provoca 500 si falta; retorna lista vacia y respeta `user_metadata.role`.
 
+## Mejoras de calidad y compliance (ultima sesion)
+
+- `components/public/PublicTrustFooter.tsx` (NUEVO): footer compartido con proteccion de datos (Ley 19.628), hora chilena, politica de cancelaciones y badges de confianza. Integrado en `/agendar` y `/agendar/[slug]`.
+- Pantalla de exito de reserva: agrega bloque "Que sigue ahora" con 3 pasos (revisar correo, llegar 10 min antes, como cancelar/reagendar).
+- Dashboard profesional:
+  - Ficha publica rediseñada en modo solo lectura: foto/avatar, descripcion, chips de correo/telefono/duracion/estado de calendario y boton "Ver mi perfil publico".
+  - Hero personalizado: saluda al profesional por nombre y muestra su tipo/especialidad.
+  - Confirmacion antes de eliminar bloques de disponibilidad y antes de cancelar citas.
+  - Nota de confidencialidad de datos de pacientes al pie del panel (Ley 19.628).
+- Accesibilidad: aria-busy en carga de horarios del flujo publico.
+
 ## Nota operativa importante
 
 En el entorno local actual `.env.local` solo contiene variables publicas de Supabase. No estan cargadas las variables `GOOGLE_SHEETS_ID`, `GOOGLE_CLIENT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `ADMIN_SESSION_SECRET`, `ADMIN_EMAILS`, `BOOTSTRAP_SECRET` ni `SUPABASE_SERVICE_ROLE_KEY`. Por eso desde local no se puede escribir directamente en Google Sheets ni administrar usuarios Supabase reales.
 
-Si se necesita asignar manualmente `andres.ruizvarela@gmail.com` a NeuroPlus en la data real, hacerlo desde `/dashboard/admin` en Vercel o agregar `center-neuroplus` en su metadata/hoja `users`. El codigo ya protege el caso sin centro usando el default `center-neuroplus`.
+### Agregar andres.ruizvarela@gmail.com como profesional en NeuroPlus
+
+Desde la instalacion en Vercel (con variables de entorno completas), ir a `/dashboard/admin`:
+
+1. **Crear usuario profesional:**
+   - Nombre: Andres Ruiz (o el nombre real)
+   - Email: `andres.ruizvarela@gmail.com`
+   - Clave: definida por el admin
+   - Rol: `user`
+   - Centro: NeuroPlus
+
+2. **Crear perfil profesional:**
+   - Seleccionar centro: NeuroPlus
+   - Nombre: (nombre completo del profesional)
+   - Slug: `andres-ruiz` (o el slug que corresponda)
+   - Especialidad y tipo: segun el perfil real
+   - Email: `andres.ruizvarela@gmail.com`
+   - Calendar ID: el calendar compartido con la service account (opcional)
+
+El codigo ya protege el caso sin centro usando el default `center-neuroplus`.
+
+### Mover / reasignar profesionales y usuarios (Admin)
+
+El admin puede mover todo desde `/dashboard/admin`:
+- **Profesional a otro centro:** clic en "Editar" en la lista de profesionales → selector de centro → guardar.
+- **Usuario a otro centro:** inline en la lista de usuarios → dropdown de centro → seleccionar y guarda automatico.
+- **Cambio de rol de usuario:** inline en la lista de usuarios → dropdown rol → guarda automatico.
 
 Para produccion sigue siendo recomendable definir:
 - `ADMIN_SESSION_SECRET`
