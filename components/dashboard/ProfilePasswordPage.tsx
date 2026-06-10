@@ -47,9 +47,10 @@ export function ProfilePasswordPage() {
     setLoading(true)
 
     const normalizedEmail = email.trim().toLowerCase()
-    const appBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || window.location.origin
-    const publicBaseUrl = window.location.hostname === 'localhost' ? 'https://agendasalud.vercel.app' : appBaseUrl
-    const redirectTo = `${publicBaseUrl}/auth/callback?next=/cambiar-contrasena?reset=1`
+    const publicBaseUrl = window.location.hostname === 'localhost'
+      ? 'https://agendasalud.vercel.app'
+      : window.location.origin
+    const redirectTo = `${publicBaseUrl}/auth/callback?next=${encodeURIComponent('/cambiar-contrasena?reset=1')}`
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
       redirectTo,
     })
@@ -57,7 +58,7 @@ export function ProfilePasswordPage() {
     setLoading(false)
 
     if (resetError) {
-      setError('No pudimos enviar el enlace. Verifica que el correo exista en la plataforma.')
+      setError('No pudimos enviar el enlace. Verifica que el correo exista en la plataforma y que el enlace de retorno este autorizado.')
       return
     }
 
