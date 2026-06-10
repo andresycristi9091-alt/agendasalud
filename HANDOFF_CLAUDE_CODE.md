@@ -59,6 +59,11 @@ Ultimo foco implementado:
   - Ahora muestra calendario mensual con seleccion por `Dia`, `Semana` o `Mes`.
   - Publicar horario crea bloques para fechas especificas (`YYYY-MM-DD`).
   - La disponibilidad publica acepta bloques por fecha exacta y mantiene compatibilidad con bloques semanales antiguos.
+- Funnel publico `/agendar`:
+  - Redisenado como seleccion interactiva de profesionales.
+  - Tarjetas grandes con imagen/foto o avatar visual.
+  - Al seleccionar un profesional aparece panel lateral con resumen y CTA `Ingresar a la agenda`.
+  - El flujo directo `/agendar/[slug]` se mantiene intacto.
 - Hotfix produccion:
   - `ADMIN_SESSION_SECRET` ya no provoca 500 si falta; usa fallback estable para no romper `/dashboard`.
   - `ADMIN_EMAILS` ya no provoca 500 si falta; retorna lista vacia y respeta `user_metadata.role`.
@@ -88,6 +93,7 @@ Para produccion sigue siendo recomendable definir:
 - `app/api/dashboard/professionals/route.ts`
 - `components/AgendaSaludLoginPage.tsx`
 - `components/admin/AdminWorkspace.tsx`
+- `components/public/ProfessionalDirectoryPage.tsx`
 - `components/dashboard/ClientWorkspace.tsx`
 - `components/public/PublicBookingPage.tsx`
 - `lib/appointments.ts`
@@ -131,6 +137,7 @@ Contexto:
 - Admin maneja estadisticas por centro y por profesional.
 - Usuario normal maneja agenda diaria, disponibilidad, citas manuales y estados sin salir del panel.
 - Citas manuales usan `/api/dashboard/appointments` POST y pasan por `bookAppointmentForProfessional`.
+- La entrada publica `/agendar` debe sentirse como funnel visual: seleccionar profesional en tarjetas, revisar resumen y entrar a la agenda individual.
 
 Prioridades siguientes:
 1. Probar flujo completo admin:
