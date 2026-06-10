@@ -31,6 +31,12 @@ type Professional = {
   specialty: string
   professionalType: string
   photoUrl: string
+  centerId?: string
+}
+
+type Me = {
+  isAdmin: boolean
+  user: { centerId?: string } | null
 }
 
 const DAYS = [
@@ -47,6 +53,7 @@ const DURATIONS = [15, 20, 30, 45, 60]
 
 export function ClientWorkspace() {
   const [professionals, setProfessionals] = useState<Professional[]>([])
+  const [me, setMe] = useState<Me | null>(null)
   const [selectedProfessionalId, setSelectedProfessionalId] = useState('')
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [availability, setAvailability] = useState<AvailabilityBlock[]>([])
@@ -85,10 +92,17 @@ export function ClientWorkspace() {
   }, [selectedProfessionalId])
 
   useEffect(() => {
-    fetch('/api/public/professionals')
-      .then((response) => response.json())
-      .then((data) => {
-        const loaded = data.professionals ?? []
+    Promise.all([
+      fetch('/api/admin/me').then((response) => response.json()).catch(() => null),
+      fetch('/api/public/professionals').then((response) => response.json()),
+    ])
+      .then(([meData, professionalsData]) => {
+        setMe(meData)
+        const loadedAll = professionalsData.professionals ?? []
+        const centerId = meData?.isAdmin ? '' : meData?.user?.centerId
+        const loaded = centerId
+          ? loadedAll.filter((professional: Professional) => professional.centerId === centerId)
+          : loadedAll
         setProfessionals(loaded)
         setSelectedProfessionalId(loaded[0]?.id ?? '')
       })
@@ -160,7 +174,7 @@ export function ClientWorkspace() {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="mb-3 inline-flex rounded-full border border-white/20 bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-white/85">
-              Panel NeuroPlus
+              {me?.isAdmin ? 'Panel NeuroPlus Admin' : 'Panel del centro'}
             </p>
             <h1 className="max-w-3xl text-3xl font-black leading-tight tracking-tight sm:text-5xl">
               Gestiona profesionales, publica horarios y recibe reservas sin llamadas.

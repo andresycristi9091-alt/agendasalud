@@ -17,7 +17,26 @@ export default function AgendaSaludLoginPage() {
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    let loginEmail = email.trim()
+
+    if (loginEmail.toLowerCase() === 'admin' && password === 'admin') {
+      const bootstrap = await fetch('/api/admin/bootstrap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'admin', password: 'admin' }),
+      })
+      const data = await bootstrap.json().catch(() => null)
+
+      if (!bootstrap.ok || !data?.email) {
+        setError('No se pudo preparar el usuario admin. Revisa SUPABASE_SERVICE_ROLE_KEY en Vercel.')
+        setLoading(false)
+        return
+      }
+
+      loginEmail = data.email
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password })
 
     if (error) {
       setError('Correo o contraseña incorrectos. Verifica tus credenciales.')
@@ -131,7 +150,7 @@ export default function AgendaSaludLoginPage() {
                     id="email"
                     type="email"
                     autoComplete="email"
-                    placeholder="nombre@centrodesalud.cl"
+                    placeholder="admin o nombre@centrodesalud.cl"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required

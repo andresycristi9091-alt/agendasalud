@@ -36,6 +36,7 @@ El dashboard esta compactado en una sola experiencia cliente: selector de profes
 - `components/public/PublicBookingPage.tsx`: pagina publica de agendamiento.
 - `components/public/ProfessionalDirectoryPage.tsx`: portada multiprofesional NeuroPlus.
 - `components/dashboard/ClientWorkspace.tsx`: dashboard cliente/profesional.
+- `components/admin/AdminWorkspace.tsx`: panel Admin multi-centro.
 - `lib/date.ts`: utilidades de hora chilena.
 - `lib/availability.ts`: generacion de slots disponibles.
 - `lib/appointments.ts`: flujo anti doble reserva + Calendar + Sheets.
@@ -55,6 +56,28 @@ Variables criticas en Vercel:
 - `GOOGLE_CALENDAR_ID`
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` requerido para crear usuarios desde Admin.
+- `ADMIN_EMAILS` lista de correos admin separados por coma.
+
+## Admin
+
+Acceso inicial pedido por el cliente:
+
+- usuario: `admin`
+- contrasena: `admin`
+
+El login convierte ese usuario a `admin@neuroplus.local` y ejecuta `/api/admin/bootstrap`, que crea/actualiza el usuario usando `SUPABASE_SERVICE_ROLE_KEY`.
+
+El Admin puede:
+
+- Crear centros independientes.
+- Crear/editar/desactivar profesionales y asignarlos a un centro.
+- Agregar `professionalType` y `photoUrl`.
+- Crear usuarios.
+- Asignar rol `admin` o `user`.
+- Asignar usuarios a un centro.
+
+Un usuario con rol `user` solo debe operar el centro asignado.
 
 ## Verificacion
 
@@ -80,6 +103,7 @@ Y estas columnas opcionales para NeuroPlus:
 
 - `professionalType`: tipo visible de profesional, por ejemplo `Neurologo`, `Psicologa`, `Fonoaudiologa`.
 - `photoUrl`: URL publica de una imagen del profesional.
+- `centerId`: ID del centro al que pertenece.
 
 Si no hay `photoUrl`, la UI muestra iniciales profesionales.
 
