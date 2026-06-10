@@ -20,7 +20,19 @@ export default function AgendaSaludLoginPage() {
     const loginEmail = email.trim()
 
     if (['admin', 'admin@agendasalud.cl'].includes(loginEmail.toLowerCase()) && password === 'admin') {
-      event.currentTarget.submit()
+      const bootstrap = await fetch('/api/admin/bootstrap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: loginEmail.toLowerCase(), password: 'admin' }),
+      })
+
+      if (!bootstrap.ok) {
+        setError('No se pudo iniciar el acceso administrador. Intenta nuevamente.')
+        setLoading(false)
+        return
+      }
+
+      window.location.assign('/dashboard')
       return
     }
 
