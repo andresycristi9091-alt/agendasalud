@@ -60,6 +60,7 @@ export function ClientWorkspace() {
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [messageTone, setMessageTone] = useState<'info' | 'error'>('info')
   const [isPending, startTransition] = useTransition()
 
   const [day, setDay] = useState('monday')
@@ -115,6 +116,8 @@ export function ClientWorkspace() {
 
   async function copyPublicLink() {
     await navigator.clipboard.writeText(publicLink)
+    setMessageTone('info')
+    setMessage('Link copiado al portapapeles.')
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1800)
   }
@@ -124,6 +127,12 @@ export function ClientWorkspace() {
     setMessage(null)
 
     startTransition(async () => {
+      if (startTime >= endTime) {
+        setMessageTone('error')
+        setMessage('La hora de termino debe ser posterior a la hora de inicio.')
+        return
+      }
+
       const response = await fetch('/api/dashboard/availability', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -138,10 +147,12 @@ export function ClientWorkspace() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => null)
+        setMessageTone('error')
         setMessage(data?.error ?? 'No pudimos guardar este bloque. Revisa las horas e intenta nuevamente.')
         return
       }
 
+      setMessageTone('info')
       setMessage('Horario publicado. Ya puede aparecer en el link publico del paciente.')
       await refreshData()
     })
@@ -279,7 +290,15 @@ export function ClientWorkspace() {
             </Field>
 
             {message && (
-              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 text-sm font-semibold text-blue-700">
+              <div
+                role={messageTone === 'error' ? 'alert' : 'status'}
+                className={[
+                  'rounded-2xl border p-3 text-sm font-semibold',
+                  messageTone === 'error'
+                    ? 'border-red-100 bg-red-50 text-red-700'
+                    : 'border-blue-100 bg-blue-50 text-blue-700',
+                ].join(' ')}
+              >
                 {message}
               </div>
             )}

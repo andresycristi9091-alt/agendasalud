@@ -39,7 +39,7 @@ export function ProfessionalDirectoryPage() {
   })
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] text-slate-950">
+    <main id="main-content" className="min-h-screen bg-[#F8FAFC] text-slate-950">
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
@@ -76,18 +76,23 @@ export function ProfessionalDirectoryPage() {
 
         <div className="mt-8 rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] sm:p-5">
           <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar por nombre, especialidad o tipo de profesional"
-              className="h-13 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-            />
-            <div className="flex gap-2 overflow-x-auto">
+            <label className="block">
+              <span className="sr-only">Buscar profesional</span>
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Buscar por nombre, especialidad o tipo de profesional"
+                className="h-13 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                autoComplete="off"
+              />
+            </label>
+            <div className="flex gap-2 overflow-x-auto" role="group" aria-label="Filtrar por tipo de profesional">
               {types.map((type) => (
                 <button
                   key={type}
                   type="button"
                   onClick={() => setSelectedType(type)}
+                  aria-pressed={selectedType === type}
                   className={[
                     'h-13 whitespace-nowrap rounded-2xl border px-4 text-sm font-black transition',
                     selectedType === type
@@ -111,14 +116,14 @@ export function ProfessionalDirectoryPage() {
         )}
 
         {!loading && filtered.length === 0 && (
-          <div className="mt-8 rounded-[28px] border border-dashed border-slate-200 bg-white p-10 text-center">
+          <div className="mt-8 rounded-[28px] border border-dashed border-slate-200 bg-white p-10 text-center" role="status">
             <p className="text-xl font-black text-slate-900">No encontramos profesionales con ese filtro.</p>
             <p className="mt-2 text-sm text-slate-500">Prueba con otra especialidad o borra la busqueda.</p>
           </div>
         )}
 
         {!loading && filtered.length > 0 && (
-          <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3" aria-label={`${filtered.length} profesionales encontrados`}>
             {filtered.map((professional) => (
               <ProfessionalCard key={professional.id} professional={professional} />
             ))}
@@ -133,6 +138,7 @@ function ProfessionalCard({ professional }: { professional: Professional }) {
   return (
     <a
       href={`/agendar/${professional.slug}`}
+      aria-label={`Ver horas disponibles con ${professional.name}, ${professional.professionalType || professional.specialty}`}
       className="group block overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_12px_38px_rgba(15,23,42,0.07)] transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-[0_22px_55px_rgba(37,99,235,0.14)]"
     >
       <div className="p-5">

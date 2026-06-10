@@ -166,7 +166,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
   }
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] text-slate-950">
+    <main id="main-content" className="min-h-screen bg-[#F8FAFC] text-slate-950">
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
@@ -189,7 +189,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
           <Hero professional={professional} />
 
           {step !== 'success' && (
-            <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] sm:p-6">
+            <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] sm:p-6" aria-live="polite">
               <Progress step={step} />
 
               {step === 'date' && (
@@ -307,7 +307,7 @@ function Progress({ step }: { step: Step }) {
   const activeIndex = items.findIndex((item) => item.id === step)
 
   return (
-    <div className="mb-7">
+    <div className="mb-7" aria-label="Progreso del agendamiento">
       <div className="grid grid-cols-3 gap-2">
         {items.map((item, index) => {
           const active = index === activeIndex
@@ -322,7 +322,7 @@ function Progress({ step }: { step: Step }) {
               >
                 {done ? 'OK' : index + 1}
               </div>
-              <span className={active ? 'text-sm font-black text-slate-900' : 'text-sm font-semibold text-slate-400'}>
+              <span aria-current={active ? 'step' : undefined} className={active ? 'text-sm font-black text-slate-900' : 'text-sm font-semibold text-slate-400'}>
                 {item.label}
               </span>
             </div>
@@ -361,6 +361,8 @@ function DateStep({
               key={date}
               type="button"
               onClick={() => onSelect(date)}
+              aria-pressed={selected}
+              aria-label={`Seleccionar ${formatReadableDate(date)}`}
               className={[
                 'rounded-2xl border p-3 text-center transition focus:outline-none focus:ring-4 focus:ring-blue-500/15',
                 selected
@@ -458,6 +460,8 @@ function SlotGroup({
               key={`${slot.startTime}-${slot.endTime}`}
               type="button"
               onClick={() => onSelect(slot)}
+              aria-pressed={selected}
+              aria-label={`Seleccionar horario ${slot.startTime} a ${slot.endTime}`}
               className={[
                 'h-12 rounded-2xl border px-3 text-sm font-black transition focus:outline-none focus:ring-4 focus:ring-blue-500/15',
                 selected
@@ -551,6 +555,7 @@ function FormStep({
             minLength={2}
             placeholder="Ej: Maria Gonzalez"
             className={inputClass}
+            autoComplete="name"
           />
         </div>
 
@@ -567,6 +572,7 @@ function FormStep({
               required
               placeholder="correo@ejemplo.cl"
               className={inputClass}
+              autoComplete="email"
             />
           </div>
           <div>
@@ -580,6 +586,8 @@ function FormStep({
               required
               placeholder="+56 9 1234 5678"
               className={inputClass}
+              autoComplete="tel"
+              inputMode="tel"
             />
           </div>
         </div>
@@ -595,6 +603,7 @@ function FormStep({
               onChange={(event) => setRut(event.target.value)}
               placeholder="12.345.678-9"
               className={inputClass}
+              autoComplete="off"
             />
           </div>
           <div>
@@ -624,7 +633,11 @@ function FormStep({
           </span>
         </label>
 
-        {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</div>}
+        {error && <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</div>}
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-500">
+          Tus datos se usaran solo para gestionar esta solicitud de agendamiento. No ingreses antecedentes clinicos sensibles en este formulario.
+        </div>
 
         <button
           type="submit"
@@ -688,7 +701,7 @@ function SuccessState({
   professional: Professional
 }) {
   return (
-    <div className="rounded-[32px] border border-slate-200 bg-white p-8 text-center shadow-[0_18px_55px_rgba(15,23,42,0.08)]">
+    <div className="rounded-[32px] border border-slate-200 bg-white p-8 text-center shadow-[0_18px_55px_rgba(15,23,42,0.08)]" role="status">
       <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 text-3xl font-black text-white">
         OK
       </div>
