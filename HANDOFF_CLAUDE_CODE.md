@@ -60,6 +60,14 @@ Ultimo foco implementado:
   - Estadisticas diarias interactivas: total, atendidos, no asiste, pendientes.
   - Panel de acciones rapidas hacia disponibilidad, cita manual y perfil publico.
   - Menu superior actualizado a `Panel profesional`.
+- Dashboard profesional estilo funnel/modulos:
+  - Tarjetas grandes con iconos SVG para Agenda diaria, Habilitar horarios, Crear cita manual, Estadisticas, Perfil publico y Link clientes.
+  - Cada tarjeta funciona como acceso rapido a su seccion interna.
+- Login profesional:
+  - Normalizado en ASCII para evitar mojibake.
+  - Muestra alternativas tipo TrialNode: Codigo via WhatsApp, Codigo via Email e Ingresar con contrasena.
+  - Email usa Supabase OTP/magic link hacia `/dashboard`.
+  - WhatsApp queda preparado con aviso hasta conectar proveedor oficial WhatsApp Business.
 - Calendarizacion automatica:
   - Primero usa `professional.calendarId`.
   - Luego `professional.email`.
@@ -107,6 +115,7 @@ Para produccion sigue siendo recomendable definir:
 - `components/admin/AdminWorkspace.tsx`
 - `components/public/ProfessionalDirectoryPage.tsx`
 - `app/(dashboard)/layout.tsx`
+- `components/AgendaSaludLoginPage.tsx`
 - `components/dashboard/ClientWorkspace.tsx`
 - `components/public/PublicBookingPage.tsx`
 - `lib/appointments.ts`
@@ -152,6 +161,8 @@ Contexto:
 - Citas manuales usan `/api/dashboard/appointments` POST y pasan por `bookAppointmentForProfessional`.
 - La entrada publica `/agendar` debe sentirse como funnel visual: seleccionar profesional en tarjetas, revisar resumen y entrar a la agenda individual.
 - El dashboard profesional debe priorizar la operacion diaria por sobre configuraciones: jornada, proximo paciente, estados y accesos rapidos primero; ajustes despues.
+- El dashboard profesional debe tener una pantalla home con modulos visuales e iconos, inspirada en el estilo TrialNode, para entrar rapido a cada flujo.
+- El login profesional debe mantener password funcional y dejar preparadas opciones de acceso sin password.
 
 Prioridades siguientes:
 1. Probar flujo completo admin:

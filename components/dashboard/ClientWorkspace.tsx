@@ -324,6 +324,17 @@ export function ClientWorkspace() {
         </div>
       </section>
 
+      <ProfessionalModuleGrid
+        publicLink={publicLink}
+        copied={copied}
+        onCopy={copyPublicLink}
+        stats={{
+          today: workdayAppointments.length,
+          pending: workdayAppointments.filter((appointment) => appointment.status === 'confirmada').length,
+          availability: activeAvailability.length,
+        }}
+      />
+
       <section className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
         <ProfessionalTodayPanel
           workDate={workDate}
@@ -341,7 +352,7 @@ export function ClientWorkspace() {
         />
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <section id="estadisticas" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {metrics.map((metric) => (
           <div key={metric.label} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,0.06)]">
             <p className="text-sm font-bold text-slate-500">{metric.label}</p>
@@ -349,33 +360,6 @@ export function ClientWorkspace() {
             <p className="mt-2 text-sm leading-5 text-slate-400">{metric.help}</p>
           </div>
         ))}
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-4">
-        <FunnelStep
-          step="1"
-          title="Perfil visible"
-          text="Foto, tipo de profesional, especialidad y descripcion aparecen en la pagina publica."
-          done={Boolean(selectedProfessional?.specialty)}
-        />
-        <FunnelStep
-          step="2"
-          title="Agenda publicada"
-          text="Define bloques semanales y duracion: 10, 15, 30, 45 minutos o 1 hora."
-          done={activeAvailability.length > 0}
-        />
-        <FunnelStep
-          step="3"
-          title="Link del paciente"
-          text="Comparte el enlace publico para que el paciente elija profesional, dia y hora."
-          done={Boolean(selectedProfessional?.slug)}
-        />
-        <FunnelStep
-          step="4"
-          title="Calendar conectado"
-          text="Usa el correo del profesional o un Calendar ID compartido con la service account."
-          done={Boolean(selectedProfessional?.calendarId || selectedProfessional?.email)}
-        />
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[420px_1fr]">
@@ -627,6 +611,165 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="mb-2 block text-sm font-black text-slate-800">{label}</span>
       {children}
     </label>
+  )
+}
+
+function ProfessionalModuleGrid({
+  publicLink,
+  copied,
+  onCopy,
+  stats,
+}: {
+  publicLink: string
+  copied: boolean
+  onCopy: () => void
+  stats: { today: number; pending: number; availability: number }
+}) {
+  return (
+    <section className="rounded-[32px] border border-slate-200 bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)] sm:p-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Centro de trabajo</p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">¿Qué quieres gestionar ahora?</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-500">Accesos rápidos para operar la agenda profesional sin buscar en menús.</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-600">
+          {stats.today} citas hoy · {stats.pending} pendientes
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <ModuleCard
+          href="#agenda"
+          icon="calendar"
+          title="Agenda diaria"
+          description="Revisa pacientes del día, estados y próximo turno."
+          meta={`${stats.today} citas hoy`}
+        />
+        <ModuleCard
+          href="#disponibilidad"
+          icon="clock"
+          title="Habilitar horarios"
+          description="Selecciona fechas, semanas o meses para abrir cupos."
+          meta={`${stats.availability} bloques activos`}
+        />
+        <ModuleCard
+          href="#agenda"
+          icon="plus"
+          title="Crear cita manual"
+          description="Agenda una hora tomada por teléfono o recepción."
+          meta="Registro interno"
+        />
+        <ModuleCard
+          href="#estadisticas"
+          icon="chart"
+          title="Estadísticas"
+          description="Atendidos, pendientes, no asiste y actividad diaria."
+          meta="Vista operativa"
+        />
+        <ModuleCard
+          href="#perfil"
+          icon="user"
+          title="Perfil público"
+          description="Edita foto, especialidad, descripción y calendario."
+          meta="Visible para clientes"
+        />
+        <button
+          type="button"
+          onClick={onCopy}
+          className="group rounded-[26px] border border-blue-100 bg-blue-50 p-5 text-left transition hover:-translate-y-1 hover:border-blue-200 hover:bg-blue-100/70 hover:shadow-[0_16px_38px_rgba(37,99,235,0.12)]"
+        >
+          <Icon name="link" />
+          <div className="mt-5 flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-black text-slate-950">Link para clientes</h3>
+              <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">{publicLink}</p>
+            </div>
+            <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-black text-white">{copied ? 'Copiado' : 'Copiar'}</span>
+          </div>
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function ModuleCard({
+  href,
+  icon,
+  title,
+  description,
+  meta,
+}: {
+  href: string
+  icon: IconName
+  title: string
+  description: string
+  meta: string
+}) {
+  return (
+    <a
+      href={href}
+      className="group rounded-[26px] border border-slate-200 bg-slate-50 p-5 transition hover:-translate-y-1 hover:border-teal-200 hover:bg-teal-50 hover:shadow-[0_16px_38px_rgba(20,184,166,0.12)]"
+    >
+      <Icon name={icon} />
+      <div className="mt-5 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-black text-slate-950">{title}</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
+        </div>
+        <span className="text-lg font-black text-teal-700 transition group-hover:translate-x-1">-&gt;</span>
+      </div>
+      <p className="mt-4 rounded-full bg-white px-3 py-1 text-xs font-black text-slate-500">{meta}</p>
+    </a>
+  )
+}
+
+type IconName = 'calendar' | 'clock' | 'plus' | 'chart' | 'user' | 'link'
+
+function Icon({ name }: { name: IconName }) {
+  const common = 'stroke-current'
+  return (
+    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm ring-1 ring-slate-200">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        {name === 'calendar' && (
+          <>
+            <rect x="4" y="5" width="16" height="15" rx="3" className={common} strokeWidth="2" />
+            <path d="M8 3v4M16 3v4M4 10h16" className={common} strokeWidth="2" strokeLinecap="round" />
+          </>
+        )}
+        {name === 'clock' && (
+          <>
+            <circle cx="12" cy="12" r="8" className={common} strokeWidth="2" />
+            <path d="M12 8v5l3 2" className={common} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </>
+        )}
+        {name === 'plus' && (
+          <>
+            <rect x="4" y="4" width="16" height="16" rx="4" className={common} strokeWidth="2" />
+            <path d="M12 8v8M8 12h8" className={common} strokeWidth="2" strokeLinecap="round" />
+          </>
+        )}
+        {name === 'chart' && (
+          <>
+            <path d="M5 19V9M12 19V5M19 19v-7" className={common} strokeWidth="2" strokeLinecap="round" />
+            <path d="M4 19h16" className={common} strokeWidth="2" strokeLinecap="round" />
+          </>
+        )}
+        {name === 'user' && (
+          <>
+            <circle cx="12" cy="8" r="4" className={common} strokeWidth="2" />
+            <path d="M5 20c1.5-4 12.5-4 14 0" className={common} strokeWidth="2" strokeLinecap="round" />
+          </>
+        )}
+        {name === 'link' && (
+          <>
+            <path d="M10 7h-1a5 5 0 0 0 0 10h2" className={common} strokeWidth="2" strokeLinecap="round" />
+            <path d="M14 7h1a5 5 0 0 1 0 10h-2" className={common} strokeWidth="2" strokeLinecap="round" />
+            <path d="M9 12h6" className={common} strokeWidth="2" strokeLinecap="round" />
+          </>
+        )}
+      </svg>
+    </div>
   )
 }
 
@@ -898,26 +1041,6 @@ function CalendarAvailabilityPicker({
           </button>
         </div>
       )}
-    </div>
-  )
-}
-
-function FunnelStep({ step, title, text, done }: { step: string; title: string; text: string; done: boolean }) {
-  return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,0.06)]">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563EB,#14B8A6)] text-sm font-black text-white">
-          {step}
-        </span>
-        <span className={[
-          'rounded-full border px-3 py-1 text-xs font-black',
-          done ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700',
-        ].join(' ')}>
-          {done ? 'Listo' : 'Pendiente'}
-        </span>
-      </div>
-      <h3 className="text-base font-black text-slate-950">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-500">{text}</p>
     </div>
   )
 }
