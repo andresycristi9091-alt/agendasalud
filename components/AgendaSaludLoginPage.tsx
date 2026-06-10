@@ -19,11 +19,11 @@ export default function AgendaSaludLoginPage() {
 
     let loginEmail = email.trim()
 
-    if (loginEmail.toLowerCase() === 'admin' && password === 'admin') {
+    if (['admin', 'admin@agendasalud.cl'].includes(loginEmail.toLowerCase()) && password === 'admin') {
       const bootstrap = await fetch('/api/admin/bootstrap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'admin', password: 'admin' }),
+        body: JSON.stringify({ username: loginEmail.toLowerCase(), password: 'admin' }),
       })
       const data = await bootstrap.json().catch(() => null)
 
@@ -150,7 +150,7 @@ export default function AgendaSaludLoginPage() {
                     id="email"
                     type="email"
                     autoComplete="email"
-                    placeholder="admin o nombre@centrodesalud.cl"
+                    placeholder="admin@agendasalud.cl"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required

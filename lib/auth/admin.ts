@@ -1,7 +1,7 @@
 import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 
-const FALLBACK_ADMIN_EMAILS = ['andresycristi9091@gmail.com']
+const FALLBACK_ADMIN_EMAILS = ['andresycristi9091@gmail.com', 'admin@agendasalud.cl']
 
 export function getAdminEmails() {
   const configured = process.env.ADMIN_EMAILS?.split(',').map((email) => email.trim().toLowerCase()).filter(Boolean) ?? []

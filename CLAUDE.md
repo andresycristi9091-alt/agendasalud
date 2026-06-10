@@ -63,10 +63,10 @@ Variables criticas en Vercel:
 
 Acceso inicial pedido por el cliente:
 
-- usuario: `admin`
+- usuario: `admin@agendasalud.cl`
 - contrasena: `admin`
 
-El login convierte ese usuario a `admin@neuroplus.local` y ejecuta `/api/admin/bootstrap`, que crea/actualiza el usuario usando `SUPABASE_SERVICE_ROLE_KEY`.
+El login ejecuta `/api/admin/bootstrap`, que crea/actualiza el usuario usando `SUPABASE_SERVICE_ROLE_KEY`.
 
 El Admin puede:
 

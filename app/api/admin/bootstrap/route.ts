@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createAdminSupabaseClient } from '@/lib/auth/admin'
 
-const ADMIN_EMAIL = 'admin@neuroplus.local'
+const ADMIN_EMAIL = 'admin@agendasalud.cl'
 
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}))
-    if (body.username !== 'admin' || body.password !== 'admin') {
+    if (!['admin', ADMIN_EMAIL].includes(String(body.username).toLowerCase()) || body.password !== 'admin') {
       return NextResponse.json({ error: 'Credenciales invalidas' }, { status: 401 })
     }
 
