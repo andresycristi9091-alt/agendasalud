@@ -15,11 +15,7 @@ type LocalAdminPayload = {
 }
 
 function getSecret(): string {
-  const secret = process.env.ADMIN_SESSION_SECRET
-  if (!secret) {
-    throw new Error('ADMIN_SESSION_SECRET no esta configurado. Agrega esta variable de entorno antes de continuar.')
-  }
-  return secret
+  return process.env.ADMIN_SESSION_SECRET || 'agendasalud-local-session-v1'
 }
 
 function bytesToBase64url(bytes: Uint8Array) {

@@ -3,11 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getLocalAdminSession, LOCAL_ADMIN_EMAIL } from '@/lib/auth/local-admin-session'
 
 export function getAdminEmails() {
-  const configured = process.env.ADMIN_EMAILS?.split(',').map((email) => email.trim().toLowerCase()).filter(Boolean) ?? []
-  if (configured.length === 0) {
-    throw new Error('ADMIN_EMAILS no esta configurado. Define al menos un correo admin en las variables de entorno.')
-  }
-  return configured
+  return process.env.ADMIN_EMAILS?.split(',').map((email) => email.trim().toLowerCase()).filter(Boolean) ?? []
 }
 
 export async function getCurrentUserRole() {

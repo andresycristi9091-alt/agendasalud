@@ -35,12 +35,21 @@ Ultimo foco implementado:
   4. Calendar conectado.
 - Admin permite configurar correo, telefono, Calendar ID y duracion base del profesional.
 - La pagina publica de confirmacion usa `next/link` para navegacion interna y mantiene boton de Google Calendar para el paciente.
+- Hotfix produccion:
+  - `ADMIN_SESSION_SECRET` ya no provoca 500 si falta; usa fallback estable para no romper `/dashboard`.
+  - `ADMIN_EMAILS` ya no provoca 500 si falta; retorna lista vacia y respeta `user_metadata.role`.
 
 ## Nota operativa importante
 
 En el entorno local actual `.env.local` solo contiene variables publicas de Supabase. No estan cargadas las variables `GOOGLE_SHEETS_ID`, `GOOGLE_CLIENT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `ADMIN_SESSION_SECRET`, `ADMIN_EMAILS`, `BOOTSTRAP_SECRET` ni `SUPABASE_SERVICE_ROLE_KEY`. Por eso desde local no se puede escribir directamente en Google Sheets ni administrar usuarios Supabase reales.
 
 Si se necesita asignar manualmente `andres.ruizvarela@gmail.com` a NeuroPlus en la data real, hacerlo desde `/dashboard/admin` en Vercel o agregar `center-neuroplus` en su metadata/hoja `users`. El codigo ya protege el caso sin centro usando el default `center-neuroplus`.
+
+Para produccion sigue siendo recomendable definir:
+- `ADMIN_SESSION_SECRET`
+- `ADMIN_EMAILS`
+- `BOOTSTRAP_SECRET`
+- `DEFAULT_CENTER_ID=center-neuroplus`
 
 ## Archivos clave modificados
 
