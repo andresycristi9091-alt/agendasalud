@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth/admin'
 import { getAllowedProfessionals, requireProfessionalAccess } from '@/lib/auth/permissions'
 import { updateProfessional } from '@/lib/google/sheets'
 import { z } from 'zod'
@@ -54,6 +55,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: 'Datos invalidos', details: parsed.error.flatten() }, { status: 400 })
     }
 
+    await requireAdmin()
     const { professional } = await requireProfessionalAccess(parsed.data.professionalId)
     await updateProfessional(professional.id, {
       specialty: parsed.data.specialty,

@@ -284,6 +284,7 @@ export function ClientWorkspace() {
   )
   const nextAppointment = workdayAppointments.find((appointment) => appointment.status === 'confirmada') ?? workdayAppointments[0]
   const dailyInsights = useMemo(() => buildDailyInsights(workdayAppointments), [workdayAppointments])
+  const canEditPublicProfile = Boolean(me?.isAdmin)
 
   return (
     <div className="space-y-8">
@@ -333,6 +334,7 @@ export function ClientWorkspace() {
           pending: workdayAppointments.filter((appointment) => appointment.status === 'confirmada').length,
           availability: activeAvailability.length,
         }}
+        canEditPublicProfile={canEditPublicProfile}
       />
 
       <section className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
@@ -349,6 +351,7 @@ export function ClientWorkspace() {
           copied={copied}
           onCopy={copyPublicLink}
           selectedProfessional={selectedProfessional}
+          canEditPublicProfile={canEditPublicProfile}
         />
       </section>
 
@@ -399,56 +402,60 @@ export function ClientWorkspace() {
             </div>
           )}
 
-          <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-4">
-            <div className="mb-5">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Perfil publico</p>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Datos visibles para pacientes</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                Ajusta especialidad, foto, descripcion, calendario y duracion base de la atencion.
-              </p>
-            </div>
-
-            <form onSubmit={updateProfessionalProfile} className="space-y-4">
-              <Field label="Tipo de profesional">
-                <input value={profileForm.professionalType} onChange={(event) => setProfileForm((current) => ({ ...current, professionalType: event.target.value }))} className={inputClass} placeholder="Ej: Neurologo, Psicologa" />
-              </Field>
-              <Field label="Especialidad">
-                <input value={profileForm.specialty} onChange={(event) => setProfileForm((current) => ({ ...current, specialty: event.target.value }))} className={inputClass} placeholder="Especialidad" required />
-              </Field>
-              <Field label="URL fotografia">
-                <input value={profileForm.photoUrl} onChange={(event) => setProfileForm((current) => ({ ...current, photoUrl: event.target.value }))} className={inputClass} placeholder="https://..." />
-              </Field>
-              <Field label="Correo profesional">
-                <input value={profileForm.email} onChange={(event) => setProfileForm((current) => ({ ...current, email: event.target.value }))} className={inputClass} placeholder="profesional@centro.cl" />
-              </Field>
-              <Field label="Telefono profesional">
-                <input value={profileForm.phone} onChange={(event) => setProfileForm((current) => ({ ...current, phone: event.target.value }))} className={inputClass} placeholder="+56 9 1234 5678" />
-              </Field>
-              <Field label="Calendario del profesional">
-                <input value={profileForm.calendarId} onChange={(event) => setProfileForm((current) => ({ ...current, calendarId: event.target.value }))} className={inputClass} placeholder="correo@centro.cl o calendar@group.calendar.google.com" />
-                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
-                  Si queda vacio, AgendaSalud intentara calendarizar en el correo profesional. Ese calendario debe estar compartido con la cuenta service account de Google.
+          {canEditPublicProfile ? (
+            <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-4">
+              <div className="mb-5">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Perfil publico</p>
+                <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Datos visibles para pacientes</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Ajusta especialidad, foto, descripcion, calendario y duracion base de la atencion.
                 </p>
-              </Field>
-              <Field label="Duracion base de atencion">
-                <select value={profileForm.appointmentDurationDefault} onChange={(event) => setProfileForm((current) => ({ ...current, appointmentDurationDefault: Number(event.target.value) }))} className={inputClass}>
-                  {DURATIONS.map((minutes) => (
-                    <option key={minutes} value={minutes}>{minutes === 60 ? '1 hora' : `${minutes} minutos`}</option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Descripcion publica">
-                <textarea value={profileForm.publicDescription} onChange={(event) => setProfileForm((current) => ({ ...current, publicDescription: event.target.value }))} className={`${inputClass} min-h-24 py-3`} placeholder="Breve descripcion para pacientes" />
-              </Field>
-              <button
-                type="submit"
-                disabled={profilePending || professionals.length === 0}
-                className="h-13 w-full rounded-2xl bg-slate-950 px-5 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:opacity-50"
-              >
-                {profilePending ? 'Guardando...' : 'Guardar perfil visible'}
-              </button>
-            </form>
-          </div>
+              </div>
+
+              <form onSubmit={updateProfessionalProfile} className="space-y-4">
+                <Field label="Tipo de profesional">
+                  <input value={profileForm.professionalType} onChange={(event) => setProfileForm((current) => ({ ...current, professionalType: event.target.value }))} className={inputClass} placeholder="Ej: Neurologo, Psicologa" />
+                </Field>
+                <Field label="Especialidad">
+                  <input value={profileForm.specialty} onChange={(event) => setProfileForm((current) => ({ ...current, specialty: event.target.value }))} className={inputClass} placeholder="Especialidad" required />
+                </Field>
+                <Field label="URL fotografia">
+                  <input value={profileForm.photoUrl} onChange={(event) => setProfileForm((current) => ({ ...current, photoUrl: event.target.value }))} className={inputClass} placeholder="https://..." />
+                </Field>
+                <Field label="Correo profesional">
+                  <input value={profileForm.email} onChange={(event) => setProfileForm((current) => ({ ...current, email: event.target.value }))} className={inputClass} placeholder="profesional@centro.cl" />
+                </Field>
+                <Field label="Telefono profesional">
+                  <input value={profileForm.phone} onChange={(event) => setProfileForm((current) => ({ ...current, phone: event.target.value }))} className={inputClass} placeholder="+56 9 1234 5678" />
+                </Field>
+                <Field label="Calendario del profesional">
+                  <input value={profileForm.calendarId} onChange={(event) => setProfileForm((current) => ({ ...current, calendarId: event.target.value }))} className={inputClass} placeholder="correo@centro.cl o calendar@group.calendar.google.com" />
+                  <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                    Si queda vacio, AgendaSalud intentara calendarizar en el correo profesional. Ese calendario debe estar compartido con la cuenta service account de Google.
+                  </p>
+                </Field>
+                <Field label="Duracion base de atencion">
+                  <select value={profileForm.appointmentDurationDefault} onChange={(event) => setProfileForm((current) => ({ ...current, appointmentDurationDefault: Number(event.target.value) }))} className={inputClass}>
+                    {DURATIONS.map((minutes) => (
+                      <option key={minutes} value={minutes}>{minutes === 60 ? '1 hora' : `${minutes} minutos`}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Descripcion publica">
+                  <textarea value={profileForm.publicDescription} onChange={(event) => setProfileForm((current) => ({ ...current, publicDescription: event.target.value }))} className={`${inputClass} min-h-24 py-3`} placeholder="Breve descripcion para pacientes" />
+                </Field>
+                <button
+                  type="submit"
+                  disabled={profilePending || professionals.length === 0}
+                  className="h-13 w-full rounded-2xl bg-slate-950 px-5 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:opacity-50"
+                >
+                  {profilePending ? 'Guardando...' : 'Guardar perfil visible'}
+                </button>
+              </form>
+            </div>
+          ) : (
+            <PublicProfileLockedCard professional={selectedProfessional} />
+          )}
 
           <div className="mb-5">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Publicar disponibilidad</p>
@@ -614,27 +621,53 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+function PublicProfileLockedCard({ professional }: { professional?: Professional }) {
+  return (
+    <div className="mb-6 rounded-3xl border border-amber-100 bg-amber-50 p-5">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">Perfil publico</p>
+      <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Informacion administrada</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-600">
+        La ficha que ven los clientes la define solamente el administrador del centro. Aqui puedes operar agenda,
+        disponibilidad, citas y estados sin modificar la informacion publica.
+      </p>
+      {professional && (
+        <div className="mt-5 rounded-2xl border border-amber-100 bg-white p-4">
+          <p className="font-black text-slate-950">{professional.name}</p>
+          <p className="mt-1 text-sm font-semibold text-slate-600">
+            {professional.professionalType || professional.specialty} - {professional.specialty}
+          </p>
+          {professional.publicDescription && (
+            <p className="mt-3 text-sm leading-6 text-slate-500">{professional.publicDescription}</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ProfessionalModuleGrid({
   publicLink,
   copied,
   onCopy,
   stats,
+  canEditPublicProfile,
 }: {
   publicLink: string
   copied: boolean
   onCopy: () => void
   stats: { today: number; pending: number; availability: number }
+  canEditPublicProfile: boolean
 }) {
   return (
     <section className="rounded-[32px] border border-slate-200 bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)] sm:p-6">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Centro de trabajo</p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">¿Qué quieres gestionar ahora?</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">Accesos rápidos para operar la agenda profesional sin buscar en menús.</p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Que quieres gestionar ahora?</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-500">Accesos rapidos para operar la agenda profesional sin buscar en menus.</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-600">
-          {stats.today} citas hoy · {stats.pending} pendientes
+          {stats.today} citas hoy - {stats.pending} pendientes
         </div>
       </div>
 
@@ -643,7 +676,7 @@ function ProfessionalModuleGrid({
           href="#agenda"
           icon="calendar"
           title="Agenda diaria"
-          description="Revisa pacientes del día, estados y próximo turno."
+          description="Revisa pacientes del dia, estados y proximo turno."
           meta={`${stats.today} citas hoy`}
         />
         <ModuleCard
@@ -657,23 +690,36 @@ function ProfessionalModuleGrid({
           href="#agenda"
           icon="plus"
           title="Crear cita manual"
-          description="Agenda una hora tomada por teléfono o recepción."
+          description="Agenda una hora tomada por telefono o recepcion."
           meta="Registro interno"
         />
         <ModuleCard
           href="#estadisticas"
           icon="chart"
-          title="Estadísticas"
+          title="Estadisticas"
           description="Atendidos, pendientes, no asiste y actividad diaria."
           meta="Vista operativa"
         />
-        <ModuleCard
-          href="#perfil"
-          icon="user"
-          title="Perfil público"
-          description="Edita foto, especialidad, descripción y calendario."
-          meta="Visible para clientes"
-        />
+        {canEditPublicProfile ? (
+          <ModuleCard
+            href="#perfil"
+            icon="user"
+            title="Perfil publico"
+            description="Edita foto, especialidad, descripcion y calendario."
+            meta="Solo Admin"
+          />
+        ) : (
+          <div className="rounded-[26px] border border-amber-100 bg-amber-50 p-5">
+            <Icon name="user" />
+            <div className="mt-5">
+              <h3 className="text-lg font-black text-slate-950">Perfil administrado</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                La informacion visible para clientes solo la modifica el administrador.
+              </p>
+              <p className="mt-4 rounded-full bg-white px-3 py-1 text-xs font-black text-amber-700">Solo lectura</p>
+            </div>
+          </div>
+        )}
         <button
           type="button"
           onClick={onCopy}
@@ -856,33 +902,42 @@ function QuickActionPanel({
   copied,
   onCopy,
   selectedProfessional,
+  canEditPublicProfile,
 }: {
   publicLink: string
   copied: boolean
   onCopy: () => void
   selectedProfessional?: Professional
+  canEditPublicProfile: boolean
 }) {
   return (
     <div className="rounded-[32px] border border-slate-200 bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)]">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Acciones rápidas</p>
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">Acciones rapidas</p>
       <h2 className="mt-2 text-2xl font-black text-slate-950">Operar agenda</h2>
       <p className="mt-2 text-sm leading-6 text-slate-500">
-        {selectedProfessional ? `${selectedProfessional.name} · ${selectedProfessional.specialty}` : 'Selecciona un profesional para operar.'}
+        {selectedProfessional ? `${selectedProfessional.name} - ${selectedProfessional.specialty}` : 'Selecciona un profesional para operar.'}
       </p>
 
       <div className="mt-5 grid gap-3">
         <a href="#disponibilidad" className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-blue-50">
           <p className="font-black text-slate-950">Habilitar horas</p>
-          <p className="mt-1 text-sm text-slate-500">Publica bloques por día, semana o mes.</p>
+          <p className="mt-1 text-sm text-slate-500">Publica bloques por dia, semana o mes.</p>
         </a>
         <a href="#agenda" className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-blue-50">
           <p className="font-black text-slate-950">Crear cita manual</p>
           <p className="mt-1 text-sm text-slate-500">Registra horas tomadas fuera de la web.</p>
         </a>
-        <a href="#perfil" className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-blue-50">
-          <p className="font-black text-slate-950">Editar perfil público</p>
-          <p className="mt-1 text-sm text-slate-500">Foto, especialidad, descripción y Calendar.</p>
-        </a>
+        {canEditPublicProfile ? (
+          <a href="#perfil" className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-blue-50">
+            <p className="font-black text-slate-950">Editar perfil publico</p>
+            <p className="mt-1 text-sm text-slate-500">Foto, especialidad, descripcion y Calendar.</p>
+          </a>
+        ) : (
+          <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+            <p className="font-black text-slate-950">Perfil publico protegido</p>
+            <p className="mt-1 text-sm text-slate-600">Solo el administrador modifica lo que ven los clientes.</p>
+          </div>
+        )}
       </div>
 
       <div className="mt-5 rounded-3xl border border-blue-100 bg-blue-50 p-4">

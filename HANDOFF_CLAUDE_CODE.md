@@ -61,8 +61,14 @@ Ultimo foco implementado:
   - Panel de acciones rapidas hacia disponibilidad, cita manual y perfil publico.
   - Menu superior actualizado a `Panel profesional`.
 - Dashboard profesional estilo funnel/modulos:
-  - Tarjetas grandes con iconos SVG para Agenda diaria, Habilitar horarios, Crear cita manual, Estadisticas, Perfil publico y Link clientes.
+  - Tarjetas grandes con iconos SVG para Agenda diaria, Habilitar horarios, Crear cita manual, Estadisticas y Link clientes.
   - Cada tarjeta funciona como acceso rapido a su seccion interna.
+- Regla de permisos de producto:
+  - La informacion publica visible para clientes/pacientes solo puede editarla el Administrador.
+  - El Profesional no puede editar foto, descripcion, especialidad publica, correo publico, telefono publico, Calendar ID ni duracion base del perfil.
+  - El Profesional solo opera agenda, disponibilidad, citas manuales, estados y estadisticas.
+  - El dashboard profesional muestra una tarjeta de solo lectura indicando que el perfil publico es administrado.
+  - `PATCH /api/dashboard/professionals` ahora exige `requireAdmin()`; no basta con tener acceso profesional al centro.
 - Login profesional:
   - Normalizado en ASCII para evitar mojibake.
   - Muestra alternativas tipo TrialNode: Codigo via WhatsApp, Codigo via Email e Ingresar con contrasena.
@@ -150,19 +156,20 @@ Contexto:
 - Si no existe SUPABASE_SERVICE_ROLE_KEY, el sistema usa usuarios internos en Google Sheets.
 - El login primero intenta Supabase Auth y luego usuarios internos por /api/auth/login.
 - Los usuarios internos guardan rol y centerId en cookie firmada.
-- El panel cliente permite editar perfil publico del profesional, correo, telefono, Calendar ID y duracion base de agenda.
+- El perfil publico del profesional, correo, telefono, Calendar ID y duracion base de agenda solo los edita Admin.
 - Las citas se crean en Google Calendar usando `calendarId`, luego `email` del profesional, luego `GOOGLE_CALENDAR_ID`.
 - Para usar el calendario del correo del profesional, compartir ese Calendar con la service account de Google.
-- Hay un embudo visual en el panel cliente: perfil visible, agenda publicada, link paciente y Calendar conectado.
+- Hay un embudo visual en el panel profesional: agenda diaria, habilitar horarios, crear cita manual, estadisticas y link paciente.
 - El panel cliente usa calendario visual para disponibilidad. Puede seleccionar fechas por dia, semana o mes y guardar bloques por fecha exacta. El backend acepta `dayOfWeek` como dia semanal legacy o como fecha `YYYY-MM-DD`.
 - Solo Admin debe crear/asignar usuarios a centros. Usuarios normales no ven configuracion de centros.
 - Admin maneja estadisticas por centro y por profesional.
-- Usuario normal maneja agenda diaria, disponibilidad, citas manuales y estados sin salir del panel.
+- Usuario normal maneja agenda diaria, disponibilidad, citas manuales y estados sin salir del panel. No edita informacion publica.
 - Citas manuales usan `/api/dashboard/appointments` POST y pasan por `bookAppointmentForProfessional`.
 - La entrada publica `/agendar` debe sentirse como funnel visual: seleccionar profesional en tarjetas, revisar resumen y entrar a la agenda individual.
 - El dashboard profesional debe priorizar la operacion diaria por sobre configuraciones: jornada, proximo paciente, estados y accesos rapidos primero; ajustes despues.
 - El dashboard profesional debe tener una pantalla home con modulos visuales e iconos, inspirada en el estilo TrialNode, para entrar rapido a cada flujo.
 - El login profesional debe mantener password funcional y dejar preparadas opciones de acceso sin password.
+- Mantener regla admin-only: toda informacion visible para pacientes en fichas publicas de profesionales debe editarse desde Admin, no desde el panel Profesional.
 
 Prioridades siguientes:
 1. Probar flujo completo admin:
