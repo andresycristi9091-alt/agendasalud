@@ -17,29 +17,11 @@ export default function AgendaSaludLoginPage() {
     setLoading(true)
     setError(null)
 
-    let loginEmail = email.trim()
+    const loginEmail = email.trim()
 
     if (['admin', 'admin@agendasalud.cl'].includes(loginEmail.toLowerCase()) && password === 'admin') {
-      const bootstrap = await fetch('/api/admin/bootstrap', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: loginEmail.toLowerCase(), password: 'admin' }),
-      })
-      const data = await bootstrap.json().catch(() => null)
-
-      if (!bootstrap.ok || !data?.email) {
-        setError('No se pudo iniciar el acceso administrador. Intenta nuevamente.')
-        setLoading(false)
-        return
-      }
-
-      if (data.fallbackSession) {
-        router.push('/dashboard')
-        router.refresh()
-        return
-      }
-
-      loginEmail = data.email
+      event.currentTarget.submit()
+      return
     }
 
     const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password })
@@ -147,7 +129,7 @@ export default function AgendaSaludLoginPage() {
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <form action="/api/admin/login" method="post" onSubmit={handleSubmit} className="space-y-5">
                 <div>
                   <label htmlFor="email" className="mb-2 block text-sm font-bold text-slate-800">
                     Correo electrónico
