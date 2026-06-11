@@ -222,11 +222,6 @@ export function AdminWorkspace() {
   }
 
   async function deactivateProfessional(id: string) {
-    const professional = professionals.find((item) => item.id === id)
-    if (professional && !window.confirm(`Desactivar a ${professional.name}? Dejara de aparecer en el agendamiento publico.`)) {
-      return
-    }
-
     const response = await fetch(`/api/admin/professionals/${id}`, { method: 'DELETE' })
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {
@@ -357,7 +352,7 @@ export function AdminWorkspace() {
             </form>
           </Panel>
 
-          <div ref={professionalFormRef}>
+          <div id="admin-professional-form" ref={professionalFormRef}>
           <Panel title={selectedProfessionalId ? 'Editar profesional' : 'Nuevo profesional'} eyebrow="Profesionales">
             <form onSubmit={submitProfessional} className="space-y-3">
               <select value={professionalForm.centerId} onChange={(e) => updateProfessionalForm('centerId', e.target.value)} className={inputClass}>
@@ -434,13 +429,19 @@ export function AdminWorkspace() {
                       <p className="text-xs text-slate-400">{centers.find((center) => center.id === professional.centerId)?.name ?? 'Sin centro'}</p>
                     </div>
                   </div>
-                  <div className="mt-3 flex gap-2">
-                    <button type="button" onClick={() => editProfessional(professional.id)} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">Editar</button>
-                    <a href={`/agendar/${professional.slug}`} target="_blank" className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600">Ver</a>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    <a
+                      href="#admin-professional-form"
+                      onClick={() => editProfessional(professional.id)}
+                      className="rounded-xl bg-blue-600 px-3 py-3 text-center text-xs font-black text-white transition hover:bg-blue-700"
+                    >
+                      Editar
+                    </a>
+                    <a href={`/agendar/${professional.slug}`} target="_blank" className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-xs font-black text-slate-600 transition hover:bg-slate-100">Ver</a>
                     {professional.active ? (
-                      <button type="button" onClick={() => deactivateProfessional(professional.id)} className="rounded-xl border border-red-200 px-3 py-2 text-xs font-black text-red-600">Desactivar</button>
+                      <button type="button" onClick={() => deactivateProfessional(professional.id)} className="rounded-xl border border-red-200 bg-white px-3 py-3 text-xs font-black text-red-600 transition hover:bg-red-50">Desactivar</button>
                     ) : (
-                      <button type="button" onClick={() => reactivateProfessional(professional.id)} className="rounded-xl border border-emerald-200 px-3 py-2 text-xs font-black text-emerald-700">Reactivar</button>
+                      <button type="button" onClick={() => reactivateProfessional(professional.id)} className="rounded-xl border border-emerald-200 bg-white px-3 py-3 text-xs font-black text-emerald-700 transition hover:bg-emerald-50">Reactivar</button>
                     )}
                   </div>
                 </div>
