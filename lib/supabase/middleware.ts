@@ -33,7 +33,10 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isDashboard = pathname.startsWith('/dashboard')
   const isLogin = pathname.startsWith('/login')
-  const isAdminApi = pathname.startsWith('/api/admin') || pathname.startsWith('/api/dashboard')
+  // Rutas de autenticacion publicas: no requieren sesion previa (es donde se obtiene)
+  const isPublicAuthApi = pathname === '/api/admin/login' || pathname === '/api/admin/bootstrap'
+  const isAdminApi =
+    !isPublicAuthApi && (pathname.startsWith('/api/admin') || pathname.startsWith('/api/dashboard'))
   const localAdminSession = await getLocalAdminSessionFromRequest(request)
 
   // Proteger rutas de API que requieren autenticacion
