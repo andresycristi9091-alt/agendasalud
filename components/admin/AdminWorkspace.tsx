@@ -2,7 +2,7 @@
 
 /* eslint-disable react-hooks/immutability, react-hooks/set-state-in-effect, @next/next/no-img-element */
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 
 type HealthCenter = {
   id: string
@@ -90,6 +90,7 @@ export function AdminWorkspace() {
   const [userMessage, setUserMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [isPending, startTransition] = useTransition()
+  const professionalFormRef = useRef<HTMLDivElement | null>(null)
 
   const selectedProfessional = useMemo(
     () => professionals.find((professional) => professional.id === selectedProfessionalId),
@@ -221,6 +222,11 @@ export function AdminWorkspace() {
   }
 
   async function deactivateProfessional(id: string) {
+    const professional = professionals.find((item) => item.id === id)
+    if (professional && !window.confirm(`Desactivar a ${professional.name}? Dejara de aparecer en el agendamiento publico.`)) {
+      return
+    }
+
     const response = await fetch(`/api/admin/professionals/${id}`, { method: 'DELETE' })
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {
@@ -229,6 +235,34 @@ export function AdminWorkspace() {
     }
     setProfessionals(data.professionals ?? [])
     setSelectedProfessionalId('')
+    setMessage('Profesional desactivado. Ya no aparecera en el agendamiento publico.')
+  }
+
+  async function reactivateProfessional(id: string) {
+    const response = await fetch(`/api/admin/professionals/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: true }),
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      setMessage(data.error ?? 'No pudimos reactivar el profesional.')
+      return
+    }
+    setProfessionals(data.professionals ?? [])
+    setMessage('Profesional reactivado. Puede volver a aparecer en el agendamiento publico.')
+  }
+
+  function editProfessional(id: string) {
+    setSelectedProfessionalId(id)
+    window.setTimeout(() => {
+      professionalFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
+  }
+
+  function clearProfessionalEdit() {
+    setSelectedProfessionalId('')
+    setProfessionalForm(emptyProfessional)
   }
 
   function submitUser(event: React.FormEvent<HTMLFormElement>) {
@@ -323,6 +357,7 @@ export function AdminWorkspace() {
             </form>
           </Panel>
 
+          <div ref={professionalFormRef}>
           <Panel title={selectedProfessionalId ? 'Editar profesional' : 'Nuevo profesional'} eyebrow="Profesionales">
             <form onSubmit={submitProfessional} className="space-y-3">
               <select value={professionalForm.centerId} onChange={(e) => updateProfessionalForm('centerId', e.target.value)} className={inputClass}>
@@ -345,11 +380,26 @@ export function AdminWorkspace() {
                 <option value={60}>1 hora</option>
               </select>
               <textarea value={professionalForm.publicDescription} onChange={(e) => updateProfessionalForm('publicDescription', e.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="Descripcion publica" />
+              <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={professionalForm.active}
+                  onChange={(e) => updateProfessionalForm('active', e.target.checked)}
+                  className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                Profesional activo y visible para agendamiento publico
+              </label>
               <button disabled={isPending} className="h-12 w-full rounded-2xl bg-slate-950 text-sm font-black text-white disabled:opacity-50">
                 {selectedProfessionalId ? 'Guardar profesional' : 'Crear profesional'}
               </button>
+              {selectedProfessionalId && (
+                <button type="button" onClick={clearProfessionalEdit} className="h-12 w-full rounded-2xl border border-slate-200 bg-white text-sm font-black text-slate-700 transition hover:bg-slate-50">
+                  Cancelar edicion
+                </button>
+              )}
             </form>
           </Panel>
+          </div>
         </div>
 
         <div className="space-y-6">
@@ -370,19 +420,28 @@ export function AdminWorkspace() {
           <Panel title="Profesionales publicados" eyebrow="Directorio">
             <div className="grid gap-3 md:grid-cols-2">
               {professionals.map((professional) => (
-                <div key={professional.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div key={professional.id} className={`rounded-2xl border p-4 ${professional.active ? 'border-slate-200 bg-slate-50' : 'border-amber-200 bg-amber-50'}`}>
                   <div className="flex gap-3">
                     <Avatar professional={professional} />
                     <div>
-                      <p className="font-black text-slate-950">{professional.name}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-black text-slate-950">{professional.name}</p>
+                        <span className={`rounded-full px-2 py-1 text-[11px] font-black uppercase tracking-[0.12em] ${professional.active ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {professional.active ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </div>
                       <p className="text-sm font-semibold text-teal-700">{professional.professionalType || professional.specialty}</p>
                       <p className="text-xs text-slate-400">{centers.find((center) => center.id === professional.centerId)?.name ?? 'Sin centro'}</p>
                     </div>
                   </div>
                   <div className="mt-3 flex gap-2">
-                    <button onClick={() => setSelectedProfessionalId(professional.id)} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">Editar</button>
+                    <button type="button" onClick={() => editProfessional(professional.id)} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">Editar</button>
                     <a href={`/agendar/${professional.slug}`} target="_blank" className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-600">Ver</a>
-                    <button onClick={() => deactivateProfessional(professional.id)} className="rounded-xl border border-red-200 px-3 py-2 text-xs font-black text-red-600">Desactivar</button>
+                    {professional.active ? (
+                      <button type="button" onClick={() => deactivateProfessional(professional.id)} className="rounded-xl border border-red-200 px-3 py-2 text-xs font-black text-red-600">Desactivar</button>
+                    ) : (
+                      <button type="button" onClick={() => reactivateProfessional(professional.id)} className="rounded-xl border border-emerald-200 px-3 py-2 text-xs font-black text-emerald-700">Reactivar</button>
+                    )}
                   </div>
                 </div>
               ))}
