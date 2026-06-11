@@ -76,8 +76,10 @@ Ultimo foco implementado:
   - Los profesionales inactivos se muestran con estado `Inactivo` y boton `Reactivar`.
 - Login profesional:
   - Normalizado en ASCII para evitar mojibake.
-  - Muestra alternativas tipo TrialNode: Codigo via WhatsApp, Codigo via Email e Ingresar con contrasena.
-  - Email usa Supabase OTP/magic link hacia `/dashboard`.
+  - Muestra alternativas tipo TrialNode: Codigo via WhatsApp, Enlace via Email e Ingresar con contrasena.
+  - Email usa Supabase magic link hacia `/dashboard`; la UI ya no promete codigo numerico.
+  - `signInWithOtp` usa `shouldCreateUser: false` para evitar que correos nuevos reciban "Confirm your email" y queden fuera del flujo profesional.
+  - Usuarios nuevos ven "Soy nuevo y necesito acceso" / "Solicita tu cuenta"; por seguridad deben ser creados por Admin.
   - WhatsApp queda preparado con aviso hasta conectar proveedor oficial WhatsApp Business.
 - Calendarizacion automatica:
   - Primero usa `professional.calendarId`.

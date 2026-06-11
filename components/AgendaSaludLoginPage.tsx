@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
-type AuthMode = 'options' | 'password'
+type AuthMode = 'options' | 'password' | 'new-user'
 
 export default function AgendaSaludLoginPage() {
   const [email, setEmail] = useState('')
@@ -86,16 +86,19 @@ export default function AgendaSaludLoginPage() {
     const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent('/dashboard')}`
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: loginEmail,
-      options: { emailRedirectTo: redirectTo },
+      options: {
+        emailRedirectTo: redirectTo,
+        shouldCreateUser: false,
+      },
     })
     setLoading(false)
 
     if (otpError) {
-      setError('No pudimos enviar el acceso por email. Intenta con contrasena.')
+      setError('Este correo no tiene una cuenta activa. Si eres nuevo, solicita que el administrador cree tu usuario.')
       return
     }
 
-    setNotice('Te enviamos un acceso seguro al correo profesional. Revisa tu bandeja de entrada o spam.')
+    setNotice('Te enviamos un enlace seguro al correo profesional. Revisa tu bandeja de entrada o spam.')
   }
 
   function requestWhatsAppCode() {
@@ -188,7 +191,7 @@ export default function AgendaSaludLoginPage() {
                     </button>
                     <button type="button" onClick={sendEmailAccess} disabled={loading} className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-teal-700 px-5 text-base font-black text-white transition hover:-translate-y-0.5 hover:bg-teal-800 disabled:opacity-60">
                       <span aria-hidden="true">✉</span>
-                      Codigo via Email
+                      Enlace via Email
                     </button>
                     <div className="flex items-center gap-4 py-2">
                       <div className="h-px flex-1 bg-slate-200" />
@@ -197,6 +200,9 @@ export default function AgendaSaludLoginPage() {
                     </div>
                     <button type="button" onClick={() => setAuthMode('password')} className="flex h-14 w-full items-center justify-center rounded-2xl border border-teal-700 bg-white px-5 text-base font-black text-teal-700 transition hover:-translate-y-0.5 hover:bg-teal-50">
                       Ingresar con contrasena
+                    </button>
+                    <button type="button" onClick={() => setAuthMode('new-user')} className="flex h-12 w-full items-center justify-center rounded-2xl bg-slate-100 px-5 text-sm font-black text-slate-700 transition hover:bg-slate-200">
+                      Soy nuevo y necesito acceso
                     </button>
                   </div>
                 )}
@@ -227,6 +233,27 @@ export default function AgendaSaludLoginPage() {
                   </form>
                 )}
 
+                {authMode === 'new-user' && (
+                  <div className="space-y-4 rounded-3xl border border-blue-100 bg-blue-50 p-5">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Nuevo usuario</p>
+                      <h3 className="mt-2 text-xl font-black text-slate-950">Solicita la creacion de tu cuenta</h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        Por seguridad, las cuentas profesionales las crea el administrador del centro. Envia tu correo profesional para que te habiliten.
+                      </p>
+                    </div>
+                    <a
+                      href={`mailto:admin@agendasalud.cl?subject=Solicitud%20de%20acceso%20AgendaSalud&body=Hola,%20necesito%20crear%20mi%20usuario%20profesional.%0A%0ACorreo:%20${encodeURIComponent(email.trim())}%0ANombre:%20%0ACentro:%20`}
+                      className="flex h-12 w-full items-center justify-center rounded-2xl bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-700"
+                    >
+                      Solicitar acceso
+                    </a>
+                    <button type="button" onClick={() => setAuthMode('options')} className="h-11 w-full rounded-2xl border border-blue-200 bg-white text-sm font-black text-blue-700">
+                      Volver al inicio de sesion
+                    </button>
+                  </div>
+                )}
+
                 {error && (
                   <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                     <span aria-hidden="true">!</span> {error}
@@ -241,7 +268,7 @@ export default function AgendaSaludLoginPage() {
 
               <div className="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
                 <p className="text-sm text-slate-500">
-                  ¿Necesitas acceso? <span className="cursor-pointer font-black text-blue-700 transition hover:text-blue-800">Contacta a tu administrador</span>
+                  Necesitas acceso? <button type="button" onClick={() => setAuthMode('new-user')} className="font-black text-blue-700 transition hover:text-blue-800">Solicita tu cuenta</button>
                 </p>
               </div>
             </div>
