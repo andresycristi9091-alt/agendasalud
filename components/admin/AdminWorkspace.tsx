@@ -88,6 +88,7 @@ export function AdminWorkspace() {
   const [selectedStatsCenterId, setSelectedStatsCenterId] = useState('')
   const [selectedProfessionalId, setSelectedProfessionalId] = useState('')
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [pendingDeleteProfessionalId, setPendingDeleteProfessionalId] = useState('')
   const [centerForm, setCenterForm] = useState(emptyCenter)
   const [professionalForm, setProfessionalForm] = useState(emptyProfessional)
   const [userForm, setUserForm] = useState({ email: '', password: '', name: '', role: 'user' as 'admin' | 'user', centerId: '' })
@@ -264,7 +265,11 @@ export function AdminWorkspace() {
 
   async function deleteProfessional(id: string) {
     const professional = professionals.find((item) => item.id === id)
-    if (!window.confirm(`Eliminar definitivamente a ${professional?.name ?? 'este profesional'}? Esta accion no se puede deshacer.`)) return
+    if (pendingDeleteProfessionalId !== id) {
+      setPendingDeleteProfessionalId(id)
+      setMessage(`Confirma la eliminacion de ${professional?.name ?? 'este profesional'}.`)
+      return
+    }
 
     const response = await fetch(`/api/admin/professionals/${id}?hard=true`, { method: 'DELETE' })
     const data = await response.json().catch(() => ({}))
@@ -273,6 +278,7 @@ export function AdminWorkspace() {
       return
     }
     setProfessionals(data.professionals ?? [])
+    setPendingDeleteProfessionalId('')
     if (selectedProfessionalId === id) {
       setSelectedProfessionalId('')
       setProfessionalForm(emptyProfessional)
@@ -296,6 +302,7 @@ export function AdminWorkspace() {
   }
 
   function editProfessional(id: string) {
+    setPendingDeleteProfessionalId('')
     setSelectedProfessionalId(id)
     window.setTimeout(() => {
       professionalFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -475,8 +482,16 @@ export function AdminWorkspace() {
                   <button type="button" onClick={clearProfessionalEdit} className="h-12 rounded-2xl border border-slate-200 bg-white text-sm font-black text-slate-700 transition hover:bg-slate-50">
                     Cancelar edicion
                   </button>
-                  <button type="button" onClick={() => deleteProfessional(selectedProfessionalId)} className="h-12 rounded-2xl border border-red-200 bg-red-50 text-sm font-black text-red-600 transition hover:bg-red-100">
-                    Eliminar definitivo
+                  <button
+                    type="button"
+                    onClick={() => deleteProfessional(selectedProfessionalId)}
+                    className={`h-12 rounded-2xl border text-sm font-black transition ${
+                      pendingDeleteProfessionalId === selectedProfessionalId
+                        ? 'border-red-500 bg-red-600 text-white hover:bg-red-700'
+                        : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
+                    }`}
+                  >
+                    {pendingDeleteProfessionalId === selectedProfessionalId ? 'Confirmar eliminacion' : 'Eliminar definitivo'}
                   </button>
                 </div>
               )}
@@ -531,8 +546,26 @@ export function AdminWorkspace() {
                     ) : (
                       <button type="button" onClick={() => reactivateProfessional(professional.id)} className="rounded-xl border border-emerald-200 bg-white px-3 py-3 text-xs font-black text-emerald-700 transition hover:bg-emerald-50">Reactivar</button>
                     )}
-                    <button type="button" onClick={() => deleteProfessional(professional.id)} className="rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-xs font-black text-red-600 transition hover:bg-red-100">Eliminar</button>
+                    <button
+                      type="button"
+                      onClick={() => deleteProfessional(professional.id)}
+                      className={`rounded-xl border px-3 py-3 text-xs font-black transition ${
+                        pendingDeleteProfessionalId === professional.id
+                          ? 'border-red-500 bg-red-600 text-white hover:bg-red-700'
+                          : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
+                      }`}
+                    >
+                      {pendingDeleteProfessionalId === professional.id ? 'Confirmar eliminacion' : 'Eliminar'}
+                    </button>
                   </div>
+                  {pendingDeleteProfessionalId === professional.id && (
+                    <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700">
+                      Esta accion intentara borrar la fila. Si Google Sheets no lo permite, el profesional quedara desactivado y fuera del directorio publico.
+                      <button type="button" onClick={() => setPendingDeleteProfessionalId('')} className="ml-2 underline">
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

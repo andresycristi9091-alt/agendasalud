@@ -39,7 +39,12 @@ export async function DELETE(
     const { id } = await params
     const hardDelete = new URL(req.url).searchParams.get('hard') === 'true'
     if (hardDelete) {
-      await deleteProfessional(id)
+      try {
+        await deleteProfessional(id)
+      } catch (error) {
+        console.warn('[admin professionals] No se pudo borrar la fila; se desactiva del directorio:', error)
+        await deactivateProfessional(id)
+      }
     } else {
       await deactivateProfessional(id)
     }
