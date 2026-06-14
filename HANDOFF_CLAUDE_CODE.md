@@ -111,6 +111,13 @@ Ultimo foco implementado:
   - Confirmacion antes de eliminar bloques de disponibilidad y antes de cancelar citas.
   - Nota de confidencialidad de datos de pacientes al pie del panel (Ley 19.628).
 - Accesibilidad: aria-busy en carga de horarios del flujo publico.
+- Notificaciones:
+  - Se agrego email de cancelacion al profesional (`sendProfessionalCancellationEmail`).
+  - Se envia cuando cancela el paciente desde `/cancelar/[id]`.
+  - Se envia cuando se cancela desde dashboard profesional/admin.
+  - El email al profesional no bloquea la cancelacion si Resend falla.
+- Verificacion:
+  - Se corrigio lint previo en `ProfilePasswordPage.tsx` eliminando un componente no usado y comillas sin escapar.
 
 ## Nota operativa importante
 

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAppointmentById, updateAppointmentStatus, getProfessionalById } from '@/lib/google/sheets'
 import { cancelCalendarEvent } from '@/lib/google/calendar'
-import { sendCancellationEmail } from '@/lib/email'
+import { sendCancellationEmail, sendProfessionalCancellationEmail } from '@/lib/email'
 
 export async function POST(
   req: Request,
@@ -38,10 +38,10 @@ export async function POST(
   }
 
   await updateAppointmentStatus(id, 'cancelada')
+  const professional = await getProfessionalById(appointment.professionalId).catch(() => null)
 
   // Cancelar evento en Google Calendar
   if (appointment.googleCalendarEventId) {
-    const professional = await getProfessionalById(appointment.professionalId).catch(() => null)
     const calId = professional?.calendarId || professional?.email || process.env.GOOGLE_CALENDAR_ID || ''
     if (calId) {
       cancelCalendarEvent(calId, appointment.googleCalendarEventId).catch((err) =>
@@ -51,7 +51,6 @@ export async function POST(
   }
 
   // Enviar email de cancelacion al paciente
-  const professional = await getProfessionalById(appointment.professionalId).catch(() => null)
   sendCancellationEmail({
     patientName: appointment.patientName,
     patientEmail: appointment.patientEmail,
@@ -61,6 +60,21 @@ export async function POST(
     startTime: appointment.startTime,
     cancelledBy: 'patient',
   }).catch((err) => console.warn('[cancel] Error enviando email:', err))
+
+  if (professional?.email) {
+    sendProfessionalCancellationEmail({
+      professionalName: professional.name,
+      professionalEmail: professional.email,
+      patientName: appointment.patientName,
+      patientEmail: appointment.patientEmail,
+      patientPhone: appointment.patientPhone,
+      centerName: professional.centerName ?? 'el centro',
+      date: appointment.date,
+      startTime: appointment.startTime,
+      endTime: appointment.endTime,
+      cancelledBy: 'patient',
+    }).catch((err) => console.warn('[cancel] Error notificando cancelacion al profesional:', err))
+  }
 
   return NextResponse.json({ ok: true, message: 'Cita cancelada correctamente' })
 }

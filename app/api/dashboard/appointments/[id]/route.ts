@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { updateAppointmentStatus, getAppointmentById, getProfessionalById } from '@/lib/google/sheets'
 import { cancelCalendarEvent } from '@/lib/google/calendar'
-import { sendCancellationEmail } from '@/lib/email'
+import { sendCancellationEmail, sendProfessionalCancellationEmail } from '@/lib/email'
 import { UpdateStatusSchema } from '@/lib/validation'
 import { requireAppointmentAccess } from '@/lib/auth/permissions'
 
@@ -25,9 +25,10 @@ export async function PATCH(
     await updateAppointmentStatus(id, parsed.data.status)
 
     if (parsed.data.status === 'cancelada' && appointment) {
+      const professional = await getProfessionalById(appointment.professionalId).catch(() => null)
+
       // Eliminar evento de Google Calendar
       if (appointment.googleCalendarEventId) {
-        const professional = await getProfessionalById(appointment.professionalId).catch(() => null)
         const calId = professional?.calendarId || professional?.email || process.env.GOOGLE_CALENDAR_ID || ''
         if (calId) {
           cancelCalendarEvent(calId, appointment.googleCalendarEventId).catch((err) =>
@@ -37,7 +38,6 @@ export async function PATCH(
       }
 
       // Enviar email de cancelacion al paciente
-      const professional = await getProfessionalById(appointment.professionalId).catch(() => null)
       sendCancellationEmail({
         patientName: appointment.patientName,
         patientEmail: appointment.patientEmail,
@@ -47,6 +47,21 @@ export async function PATCH(
         startTime: appointment.startTime,
         cancelledBy: 'professional',
       }).catch((err) => console.warn('[dashboard cancel] Error enviando email:', err))
+
+      if (professional?.email) {
+        sendProfessionalCancellationEmail({
+          professionalName: professional.name,
+          professionalEmail: professional.email,
+          patientName: appointment.patientName,
+          patientEmail: appointment.patientEmail,
+          patientPhone: appointment.patientPhone,
+          centerName: professional.centerName ?? '',
+          date: appointment.date,
+          startTime: appointment.startTime,
+          endTime: appointment.endTime,
+          cancelledBy: 'professional',
+        }).catch((err) => console.warn('[dashboard cancel] Error notificando cancelacion al profesional:', err))
+      }
     }
 
     return NextResponse.json({ message: 'Estado actualizado' })

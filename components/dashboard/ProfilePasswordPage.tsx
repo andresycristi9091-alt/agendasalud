@@ -327,39 +327,10 @@ export function ProfilePasswordPage() {
             <li>Usa al menos 8 caracteres.</li>
             <li>No reutilices claves personales.</li>
             <li>Cambia la clave inicial que te dio el admin.</li>
-            <li>Si olvidaste tu clave, usa la opcion "Por correo".</li>
+            <li>Si olvidaste tu clave, usa la opcion Por correo.</li>
           </ul>
         </aside>
       </section>
-    </div>
-  )
-}
-
-function StepIndicator({ step }: { step: Step }) {
-  const steps = [
-    { key: 'email', label: 'Correo' },
-    { key: 'linkSent', label: 'Enlace' },
-    { key: 'password', label: 'Nueva clave' },
-  ] satisfies Array<{ key: Step; label: string }>
-
-  const activeIndex = steps.findIndex((item) => item.key === step)
-
-  return (
-    <div className="mb-6 grid gap-2 sm:grid-cols-3">
-      {steps.map((item, index) => {
-        const active = step === 'done' || index <= activeIndex
-        return (
-          <div
-            key={item.key}
-            className={[
-              'rounded-2xl border px-4 py-3 text-sm font-black',
-              active ? 'border-blue-100 bg-blue-50 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-400',
-            ].join(' ')}
-          >
-            {index + 1}. {item.label}
-          </div>
-        )
-      })}
     </div>
   )
 }

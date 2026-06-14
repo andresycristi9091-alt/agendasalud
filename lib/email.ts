@@ -172,6 +172,19 @@ type CancellationEmailParams = {
   cancelledBy: 'patient' | 'professional' | 'admin'
 }
 
+type ProfessionalCancellationParams = {
+  professionalName: string
+  professionalEmail: string
+  patientName: string
+  patientEmail: string
+  patientPhone: string
+  centerName: string
+  date: string
+  startTime: string
+  endTime: string
+  cancelledBy: 'patient' | 'professional' | 'admin'
+}
+
 function buildCancellationHtml(params: CancellationEmailParams): string {
   const dateFormatted = formatChileDate(params.date)
   const who = params.cancelledBy === 'patient' ? 'el paciente' : params.cancelledBy === 'admin' ? 'el centro' : 'el profesional'
@@ -201,6 +214,58 @@ function buildCancellationHtml(params: CancellationEmailParams): string {
         </td></tr>
         <tr><td style="padding:16px 32px;border-top:1px solid #f1f5f9;text-align:center;">
           <p style="margin:0;color:#94a3b8;font-size:12px;">AgendaSalud &middot; Tus datos se usan solo para gestionar esta cita.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+}
+
+function buildProfessionalCancellationHtml(params: ProfessionalCancellationParams): string {
+  const dateFormatted = formatChileDate(params.date)
+  const who = params.cancelledBy === 'patient' ? 'el paciente' : params.cancelledBy === 'admin' ? 'el centro' : 'el profesional'
+
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8FAFC;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(15,23,42,.08);">
+        <tr><td style="background:linear-gradient(135deg,#991B1B,#DC2626);padding:28px;text-align:center;">
+          <p style="margin:0;color:rgba(255,255,255,.72);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;">AgendaSalud</p>
+          <h1 style="margin:10px 0 0;color:#fff;font-size:24px;font-weight:900;">Cita cancelada</h1>
+        </td></tr>
+        <tr><td style="padding:28px;">
+          <p style="margin:0 0 16px;color:#475569;font-size:14px;">Hola <strong style="color:#0f172a;">${params.professionalName}</strong>, una cita fue cancelada por ${who}.</p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#FEF2F2;border-radius:12px;overflow:hidden;margin-bottom:20px;">
+            <tr><td style="padding:20px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td style="padding:8px 0;border-bottom:1px solid #fecaca;">
+                  <span style="color:#991B1B;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;">Paciente</span><br>
+                  <span style="color:#0f172a;font-weight:900;font-size:15px;">${params.patientName}</span>
+                </td></tr>
+                <tr><td style="padding:8px 0;border-bottom:1px solid #fecaca;">
+                  <span style="color:#991B1B;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;">Contacto</span><br>
+                  <span style="color:#0f172a;font-weight:700;">${params.patientEmail} &middot; ${params.patientPhone}</span>
+                </td></tr>
+                <tr><td style="padding:8px 0;border-bottom:1px solid #fecaca;">
+                  <span style="color:#991B1B;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;">Fecha</span><br>
+                  <span style="color:#0f172a;font-weight:700;">${dateFormatted}</span>
+                </td></tr>
+                <tr><td style="padding:8px 0;">
+                  <span style="color:#991B1B;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;">Horario liberado</span><br>
+                  <span style="color:#0f172a;font-weight:900;font-size:17px;">${params.startTime} &ndash; ${params.endTime} hrs</span>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+          <p style="margin:0;color:#64748b;font-size:13px;">Puedes revisar tu agenda desde el <a href="${process.env.NEXT_PUBLIC_APP_URL ?? 'https://agendasalud.vercel.app'}/dashboard" style="color:#2563EB;font-weight:700;text-decoration:none;">panel profesional</a>.</p>
+        </td></tr>
+        <tr><td style="padding:16px 32px;border-top:1px solid #f1f5f9;text-align:center;">
+          <p style="margin:0;color:#94a3b8;font-size:12px;">AgendaSalud &middot; ${params.centerName}</p>
         </td></tr>
       </table>
     </td></tr>
@@ -249,6 +314,28 @@ export async function sendCancellationEmail(params: CancellationEmailParams): Pr
     }
   } catch (error) {
     console.error('[email] Error red al enviar cancelacion:', error)
+  }
+}
+
+export async function sendProfessionalCancellationEmail(params: ProfessionalCancellationParams): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey || !params.professionalEmail) return
+
+  const from = process.env.EMAIL_FROM ?? 'AgendaSalud <noreply@agendasalud.cl>'
+  const subject = `Cita cancelada: ${params.patientName} - ${formatChileDate(params.date)} ${params.startTime} hrs`
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to: [params.professionalEmail], subject, html: buildProfessionalCancellationHtml(params) }),
+    })
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '')
+      console.error('[email] Error notificando cancelacion al profesional:', response.status, detail)
+    }
+  } catch (error) {
+    console.error('[email] Error red al notificar cancelacion al profesional:', error)
   }
 }
 

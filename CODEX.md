@@ -395,6 +395,7 @@ npm run build      # verificar que compila sin errores
 - Pagina de cancelacion publica /cancelar/[id] con verificacion por email
 - Eliminacion de evento Calendar al cancelar
 - Email de cancelacion al paciente
+- Email de notificacion al profesional cuando se cancela una cita desde paciente o dashboard
 - Busqueda de citas por email /mis-citas (sin registro)
 - Dashboard profesional (agenda, citas, disponibilidad, nueva cita)
 - Panel admin (centros, profesionales, usuarios)
@@ -408,7 +409,6 @@ npm run build      # verificar que compila sin errores
 
 - Split de ClientWorkspace.tsx: monolito de mas de 800 lineas. Extraer: AgendaTab, CitasTab, DisponibilidadTab, NuevaCitaTab, ConfiguracionTab
 - Split de AdminWorkspace.tsx: mismo problema
-- Email al profesional cuando se cancela su cita desde cualquier origen
 - Reagendamiento real: cambiar fecha/hora de una cita existente (hoy existe el estado pero no hay UI ni logica)
 - Ficha basica de paciente: historial acumulado por email con anotaciones administrativas
 - Modulo de finanzas basico: precio por servicio, estado de pago, reporte simple
