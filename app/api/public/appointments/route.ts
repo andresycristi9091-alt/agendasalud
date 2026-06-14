@@ -3,6 +3,7 @@ import { AppointmentSchema } from '@/lib/validation'
 import { bookAppointment } from '@/lib/appointments'
 import { sendBookingConfirmation } from '@/lib/email'
 import { getProfessionalBySlug } from '@/lib/google/sheets'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 export async function POST(req: Request) {
   try {
@@ -13,6 +14,19 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: 'Datos invalidos', details: parsed.error.flatten() },
         { status: 400 }
+      )
+    }
+
+    const limit = rateLimit(
+      req,
+      `public-booking:${parsed.data.professionalSlug}:${parsed.data.patientEmail}`,
+      { limit: 5, windowMs: 10 * 60 * 1000 }
+    )
+
+    if (!limit.allowed) {
+      return rateLimitResponse(
+        limit,
+        'Detectamos muchos intentos de agendamiento. Espera unos minutos antes de intentar nuevamente.'
       )
     }
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAppointmentById, updateAppointmentStatus, getProfessionalById } from '@/lib/google/sheets'
 import { cancelCalendarEvent } from '@/lib/google/calendar'
 import { sendCancellationEmail, sendProfessionalCancellationEmail } from '@/lib/email'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 export async function POST(
   req: Request,
@@ -18,6 +19,15 @@ export async function POST(
 
   if (!body.email || typeof body.email !== 'string') {
     return NextResponse.json({ error: 'Se requiere el correo del paciente para confirmar la cancelacion' }, { status: 400 })
+  }
+
+  const limit = rateLimit(req, `public-cancel:${id}:${body.email}`, {
+    limit: 5,
+    windowMs: 15 * 60 * 1000,
+  })
+
+  if (!limit.allowed) {
+    return rateLimitResponse(limit, 'Demasiados intentos de cancelacion. Espera unos minutos e intenta nuevamente.')
   }
 
   const appointment = await getAppointmentById(id).catch(() => null)

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAppointmentsByPatientEmail, getProfessionalById } from '@/lib/google/sheets'
 import { z } from 'zod'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 const Schema = z.object({ email: z.string().email() })
 
@@ -15,6 +16,15 @@ export async function POST(req: Request) {
   const parsed = Schema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Correo invalido' }, { status: 400 })
+  }
+
+  const limit = rateLimit(req, `appointments-by-email:${parsed.data.email}`, {
+    limit: 8,
+    windowMs: 15 * 60 * 1000,
+  })
+
+  if (!limit.allowed) {
+    return rateLimitResponse(limit, 'Demasiadas consultas de citas. Espera unos minutos e intenta nuevamente.')
   }
 
   const appointments = await getAppointmentsByPatientEmail(parsed.data.email).catch(() => [])

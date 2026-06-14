@@ -1,6 +1,6 @@
 # Auditoria Fase 0 - AgendaSalud
 
-Production audit: 69/100, beta funcional pero riesgosa para escala publica, principalmente por deuda de autenticacion dual, ausencia de rate limiting, falta de Google Calendar OAuth por profesional, persistencia en Google Sheets y monolitos grandes en dashboard/admin.
+Production audit: 69/100, beta funcional pero riesgosa para escala publica, principalmente por deuda de autenticacion dual, rate limiting inicialmente ausente, falta de Google Calendar OAuth por profesional, persistencia en Google Sheets y monolitos grandes en dashboard/admin.
 
 Fecha: 2026-06-14  
 Repositorio: `C:\Users\snowc\proyectos\agendasalud`  
@@ -361,8 +361,25 @@ rg --files
 - Dataset real de Google Sheets y permisos compartidos.
 - Politica comercial sobre borrado definitivo vs retencion legal/operativa.
 
-## 10. Recomendacion
+## 10. Actualizacion posterior - 2026-06-14
 
-No empezar por OAuth, CRM o finanzas todavia. El siguiente paso mas rentable es **Fase 1: seguridad/auth base**, especialmente rate limiting y endurecimiento de sesiones, porque protege los flujos ya publicados sin cambiar la experiencia principal.
+Despues de esta auditoria se revisaron proyectos open source de agendamiento y se implemento una mitigacion inicial de rate limiting en endpoints sensibles:
 
-Siguiente accion sugerida: implementar rate limiting local/edge-friendly para `/api/admin/login`, `/api/auth/login`, `/api/public/appointments`, `/api/public/appointments/by-email` y recuperacion de clave.
+- `POST /api/admin/login`
+- `POST /api/auth/login`
+- `POST /api/public/appointments`
+- `POST /api/public/appointments/by-email`
+- `POST /api/public/appointments/[id]/cancel`
+- `PATCH /api/dashboard/professionals/password`
+
+Archivo nuevo: `lib/rate-limit.ts`.
+
+Esta mejora reduce riesgo de abuso, pero no reemplaza una solucion persistente compartida entre instancias. Para produccion a escala, migrar a Redis/Vercel KV/Unkey o persistencia transaccional.
+
+Revision de referencias GitHub: `docs/GITHUB_SCHEDULING_REVIEW.md`.
+
+## 11. Recomendacion
+
+No empezar por OAuth, CRM o finanzas todavia. El siguiente paso mas rentable sigue siendo **Fase 1: seguridad/auth base**, ahora continuando con rate limiting persistente, endurecimiento de sesiones, CSRF en mutaciones sensibles y pruebas criticas.
+
+Siguiente accion sugerida: agregar tests de flujos criticos y preparar rate limiting persistente externo para produccion.

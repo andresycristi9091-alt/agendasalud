@@ -17,6 +17,7 @@ URL de produccion: https://agendasalud.vercel.app
 - Resend para email
 - Vercel Cron para recordatorios
 - Zod para validacion
+- Rate limiting interno en endpoints sensibles
 
 ## Perfiles
 
@@ -123,6 +124,12 @@ La Fase 0 esta documentada en:
 docs/AUDIT.md
 ```
 
+La revision de proyectos open source de agendamiento esta documentada en:
+
+```text
+docs/GITHUB_SCHEDULING_REVIEW.md
+```
+
 Resumen: el producto es funcional como beta, pero antes de escalar se recomienda priorizar rate limiting, endurecimiento de auth/sesiones, tests criticos, refactor de monolitos UI y definicion de migracion futura desde Google Sheets a una base relacional.
 
 ## Comandos utiles
@@ -141,3 +148,4 @@ npm run start
 - OAuth por profesional aun no esta implementado.
 - Los emails usan Resend; si `RESEND_API_KEY` no existe, las citas no se bloquean.
 - El cron de recordatorios corre cada hora en Vercel via `vercel.json`.
+- El rate limiting actual es in-memory. Para escala real, migrar a Redis/Vercel KV/Unkey o persistencia transaccional.

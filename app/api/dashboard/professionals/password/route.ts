@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getLocalAdminSession } from '@/lib/auth/local-admin-session'
 import { getManagedUserByEmail, updateManagedUser } from '@/lib/google/sheets'
 import { verifyPassword, hashPassword } from '@/lib/auth/password'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 export async function PATCH(req: Request) {
   const session = await getLocalAdminSession()
@@ -20,6 +21,15 @@ export async function PATCH(req: Request) {
 
   if (!currentPassword || !newPassword) {
     return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
+  }
+
+  const limit = rateLimit(req, `password-change:${session.email}`, {
+    limit: 5,
+    windowMs: 15 * 60 * 1000,
+  })
+
+  if (!limit.allowed) {
+    return rateLimitResponse(limit, 'Demasiados intentos de cambio de contrasena. Espera unos minutos.')
   }
 
   if (typeof newPassword !== 'string' || newPassword.length < 8) {

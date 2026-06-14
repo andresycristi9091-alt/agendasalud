@@ -3,6 +3,7 @@ import { setLocalAdminSession } from '@/lib/auth/local-admin-session'
 import { getManagedUserByEmail } from '@/lib/google/sheets'
 import { verifyPassword } from '@/lib/auth/password'
 import { setLocalUserSession } from '@/lib/auth/local-admin-session'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 const ADMIN_EMAIL = 'admin@agendasalud.cl'
 
@@ -10,6 +11,15 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}))
   const email = String(body.email ?? '').trim().toLowerCase()
   const password = String(body.password ?? '')
+
+  const limit = rateLimit(req, `admin-login:${email || 'anonimo'}`, {
+    limit: 8,
+    windowMs: 15 * 60 * 1000,
+  })
+
+  if (!limit.allowed) {
+    return rateLimitResponse(limit, 'Demasiados intentos de acceso. Espera unos minutos e intenta nuevamente.')
+  }
 
   if (!email || !password) {
     return NextResponse.json({ error: 'Credenciales incompletas' }, { status: 400 })

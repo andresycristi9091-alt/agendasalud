@@ -112,6 +112,20 @@ Ultimo foco implementado:
 
 ## Mejoras de calidad y compliance (ultima sesion)
 
+- Revision GitHub de sistemas de agendamiento:
+  - Se revisaron Easy!Appointments, Cal.diy, NextAppointments, NexCal y Next.js Appointment Booking.
+  - No se copio codigo externo ni se mezclaron licencias.
+  - Se documento el mapeo de patrones en `docs/GITHUB_SCHEDULING_REVIEW.md`.
+  - Patron integrado ahora: rate limiting en endpoints sensibles.
+- Rate limiting MVP:
+  - Nuevo archivo `lib/rate-limit.ts`.
+  - Protege `POST /api/admin/login`.
+  - Protege `POST /api/auth/login`.
+  - Protege `POST /api/public/appointments`.
+  - Protege `POST /api/public/appointments/by-email`.
+  - Protege `POST /api/public/appointments/[id]/cancel`.
+  - Protege `PATCH /api/dashboard/professionals/password`.
+  - Es in-memory. Para produccion a escala migrar a Redis/Vercel KV/Unkey o persistencia transaccional.
 - `components/public/PublicTrustFooter.tsx` (NUEVO): footer compartido con proteccion de datos (Ley 19.628), hora chilena, politica de cancelaciones y badges de confianza. Integrado en `/agendar` y `/agendar/[slug]`.
 - Pantalla de exito de reserva: agrega bloque "Que sigue ahora" con 3 pasos (revisar correo, llegar 10 min antes, como cancelar/reagendar).
 - Dashboard profesional:
@@ -130,9 +144,9 @@ Ultimo foco implementado:
 - Fase 0 / auditoria:
   - Se creo `docs/AUDIT.md` siguiendo el mega prompt recibido.
   - Score de readiness: 69/100, beta funcional pero riesgosa para escala publica.
-  - Hallazgos principales: falta rate limiting, auth dual compleja, Google Sheets como DB MVP sin transacciones, Google Calendar OAuth por profesional pendiente, monolitos UI grandes, sin tests automatizados.
+  - Hallazgos principales: faltaba rate limiting persistente, auth dual compleja, Google Sheets como DB MVP sin transacciones, Google Calendar OAuth por profesional pendiente, monolitos UI grandes, sin tests automatizados.
   - Se reemplazo `README.md` default por documentacion especifica del proyecto.
-  - Siguiente paso recomendado: Fase 1 seguridad/auth base, empezando por rate limiting en login, reserva y busqueda por email.
+  - Siguiente paso recomendado: continuar Fase 1 seguridad/auth base con rate limiting persistente, CSRF y tests criticos.
 
 ## Nota operativa importante
 
@@ -192,6 +206,7 @@ Para produccion sigue siendo recomendable definir:
 - `components/public/PublicBookingPage.tsx`
 - `lib/appointments.ts`
 - `lib/auth/permissions.ts`
+- `lib/rate-limit.ts`
 - `lib/availability.ts`
 - `lib/validation.ts`
 - `app/api/dashboard/appointments/route.ts`
@@ -257,6 +272,8 @@ Prioridades siguientes:
 6. Agregar auditoria de acciones admin y cambios de agenda.
 7. Agregar pruebas basicas de APIs criticas.
 8. Mantener accesibilidad WCAG, mensajes claros y diseno HealthTech.
+9. Migrar rate limiting actual desde memoria local a Redis/Vercel KV/Unkey antes de escalar trafico real.
+10. Implementar booking rules maduras: anticipacion minima, ventana maxima, buffers y excepciones de disponibilidad.
 
 Antes de terminar:
 - Ejecuta npm run lint.

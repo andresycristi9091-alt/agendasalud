@@ -78,6 +78,8 @@ URL de produccion: https://agendasalud.vercel.app
 | POST /api/public/appointments/[id]/cancel | Cancelar cita (requiere email del paciente) |
 | POST /api/public/appointments/by-email | Buscar citas de un paciente por email |
 
+Nota: las rutas publicas sensibles de reserva, busqueda/cancelacion por email y login tienen rate limiting inicial server-side.
+
 ### APIs dashboard (requiere sesion profesional/admin)
 
 | Metodo + Ruta | Funcion |
@@ -118,6 +120,7 @@ lib/
   appointments.ts        Motor de reserva: mutex + Calendar + Sheets + emails
   availability.ts        Generacion de slots libres: Sheets + Google Calendar FreeBusy
   reminders.ts           Logica de recordatorios automaticos (24h y 2h antes)
+  rate-limit.ts          Rate limiting in-memory para endpoints sensibles
   email.ts               Templates HTML y envio via Resend:
                            sendBookingConfirmation      (paciente al reservar)
                            sendProfessionalNotification (profesional al reservar)
@@ -405,6 +408,7 @@ npm run build      # verificar que compila sin errores
 - Admin puede editar usuarios completos: nombre, email, clave, rol, centro y estado activo
 - Admin puede desactivar/reactivar usuarios o eliminarlos definitivamente
 - Admin puede editar todos los datos de profesionales, desactivar/reactivar o eliminarlos definitivamente
+- Rate limiting inicial en login admin/profesional, reserva publica, busqueda de citas por email, cancelacion publica y cambio de clave
 - Resolucion correcta del nombre de usuario en Supabase (5 campos de metadatos)
 - Estado reagendada en el schema de Appointment
 - Fase 0 de auditoria creada en `docs/AUDIT.md`
@@ -422,7 +426,7 @@ npm run build      # verificar que compila sin errores
 - Metricas en admin: graficos de ocupacion, inasistencias, profesionales mas activos
 - Exportar datos: CSV de citas desde admin
 - Google Calendar OAuth por profesional: actualmente usa service account global. Para escalar cada profesional deberia conectar su propio Calendar via OAuth 2.0
-- Rate limiting en endpoints publicos de reserva y busqueda por email
+- Rate limiting persistente externo para escala real (Redis/Vercel KV/Unkey o equivalente)
 - CRM basico: pacientes frecuentes, etiquetas, notas, control recordatorio
 
 ---
