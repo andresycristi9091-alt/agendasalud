@@ -459,6 +459,33 @@ export async function updateManagedUser(id: string, data: Partial<ManagedUser>):
   return updated
 }
 
+export async function deleteManagedUser(id: string): Promise<void> {
+  const rows = await getSheetData('users!A:I')
+  const rowIndex = rows.findIndex((row, index) => index > 0 && row[0] === id)
+  if (rowIndex === -1) throw new Error('Usuario no encontrado')
+
+  const metadata = await getSheetsClient().spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const sheet = metadata.data.sheets?.find((item) => item.properties?.title === 'users')
+  const sheetId = sheet?.properties?.sheetId
+  if (sheetId === undefined) throw new Error('Hoja users no encontrada')
+
+  await getSheetsClient().spreadsheets.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: {
+            sheetId,
+            dimension: 'ROWS',
+            startIndex: rowIndex,
+            endIndex: rowIndex + 1,
+          },
+        },
+      }],
+    },
+  })
+}
+
 // â”€â”€ Availability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function getAvailabilityByProfessional(professionalId: string): Promise<Availability[]> {
   const rows = await getSheetData('availability!A:I')
@@ -604,4 +631,3 @@ export async function getAppointmentsByPatientEmail(email: string): Promise<Appo
       return db.localeCompare(da)
     })
 }
-

@@ -42,6 +42,8 @@ type ManagedUser = {
   name: string
   role: 'admin' | 'user'
   centerId?: string
+  active: boolean
+  source?: string
 }
 
 type Appointment = {
@@ -75,6 +77,8 @@ const emptyProfessional = {
   photoUrl: '',
 }
 
+const emptyUserEditForm = { email: '', password: '', name: '', role: 'user' as 'admin' | 'user', centerId: '', active: true }
+
 export function AdminWorkspace() {
   const [centers, setCenters] = useState<HealthCenter[]>([])
   const [me, setMe] = useState<Me | null>(null)
@@ -83,10 +87,13 @@ export function AdminWorkspace() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [selectedStatsCenterId, setSelectedStatsCenterId] = useState('')
   const [selectedProfessionalId, setSelectedProfessionalId] = useState('')
+  const [selectedUserId, setSelectedUserId] = useState('')
   const [centerForm, setCenterForm] = useState(emptyCenter)
   const [professionalForm, setProfessionalForm] = useState(emptyProfessional)
   const [userForm, setUserForm] = useState({ email: '', password: '', name: '', role: 'user' as 'admin' | 'user', centerId: '' })
+  const [userEditForm, setUserEditForm] = useState(emptyUserEditForm)
   const [showPassword, setShowPassword] = useState(false)
+  const [showEditPassword, setShowEditPassword] = useState(false)
   const [lastCreatedUser, setLastCreatedUser] = useState<{ name: string; email: string; password: string } | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [userMessage, setUserMessage] = useState<string | null>(null)
@@ -97,6 +104,10 @@ export function AdminWorkspace() {
   const selectedProfessional = useMemo(
     () => professionals.find((professional) => professional.id === selectedProfessionalId),
     [professionals, selectedProfessionalId]
+  )
+  const selectedUser = useMemo(
+    () => users.find((user) => user.id === selectedUserId),
+    [users, selectedUserId]
   )
 
   useEffect(() => {
@@ -142,6 +153,22 @@ export function AdminWorkspace() {
       photoUrl: selectedProfessional.photoUrl ?? '',
     })
   }, [selectedProfessional])
+
+  useEffect(() => {
+    if (!selectedUser) {
+      setUserEditForm(emptyUserEditForm)
+      return
+    }
+
+    setUserEditForm({
+      email: selectedUser.email,
+      password: '',
+      name: selectedUser.name || selectedUser.email,
+      role: selectedUser.role,
+      centerId: selectedUser.centerId ?? '',
+      active: selectedUser.active,
+    })
+  }, [selectedUser])
 
   async function loadCenters() {
     const response = await fetch('/api/admin/centers')
@@ -284,32 +311,63 @@ export function AdminWorkspace() {
     })
   }
 
-  async function updateUserRole(user: ManagedUser, role: 'admin' | 'user') {
-    const response = await fetch(`/api/admin/users/${user.id}`, {
+  async function submitUserEdit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selectedUserId) return
+    setUserMessage(null)
+
+    const payload = {
+      email: userEditForm.email,
+      name: userEditForm.name,
+      role: userEditForm.role,
+      centerId: userEditForm.centerId,
+      active: userEditForm.active,
+      ...(userEditForm.password ? { password: userEditForm.password } : {}),
+    }
+
+    const response = await fetch(`/api/admin/users/${selectedUserId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role, name: user.name || user.email, centerId: user.centerId ?? '' }),
+      body: JSON.stringify(payload),
     })
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {
-      setUserMessage(data.error ?? 'No pudimos actualizar rol.')
+      setUserMessage(data.error ?? 'No pudimos actualizar usuario.')
       return
     }
-    setUsers((current) => current.map((item) => (item.id === user.id ? { ...item, role } : item)))
+
+    setUsers((current) => current.map((item) => (item.id === selectedUserId ? { ...item, ...data.user } : item)))
+    setUserEditForm((current) => ({ ...current, password: '' }))
+    setUserMessage('Usuario actualizado.')
   }
 
-  async function updateUserCenter(user: ManagedUser, centerId: string) {
+  async function setUserActive(user: ManagedUser, active: boolean) {
     const response = await fetch(`/api/admin/users/${user.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: user.role, name: user.name || user.email, centerId }),
+      body: JSON.stringify({ active, name: user.name || user.email, role: user.role, centerId: user.centerId ?? '' }),
     })
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {
-      setUserMessage(data.error ?? 'No pudimos actualizar centro.')
+      setUserMessage(data.error ?? 'No pudimos cambiar el estado del usuario.')
       return
     }
-    setUsers((current) => current.map((item) => (item.id === user.id ? { ...item, centerId } : item)))
+    setUsers((current) => current.map((item) => (item.id === user.id ? { ...item, active } : item)))
+    setUserMessage(active ? 'Usuario reactivado.' : 'Usuario desactivado.')
+  }
+
+  async function deleteUser(user: ManagedUser) {
+    if (!window.confirm(`Eliminar definitivamente a ${user.email}? Esta accion no se puede deshacer.`)) return
+
+    const response = await fetch(`/api/admin/users/${user.id}?hard=true`, { method: 'DELETE' })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      setUserMessage(data.error ?? 'No pudimos eliminar usuario.')
+      return
+    }
+    setUsers((current) => current.filter((item) => item.id !== user.id))
+    if (selectedUserId === user.id) setSelectedUserId('')
+    setUserMessage('Usuario eliminado definitivamente.')
   }
 
   if (loading) return <div className="rounded-3xl bg-white p-10 text-center font-bold text-slate-400">Cargando Admin...</div>
@@ -524,23 +582,101 @@ export function AdminWorkspace() {
               </div>
             )}
 
+            {selectedUser && (
+              <form onSubmit={submitUserEdit} className="mt-5 rounded-3xl border border-blue-100 bg-blue-50 p-4">
+                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Editar usuario</p>
+                    <h3 className="mt-1 text-lg font-black text-slate-950">{selectedUser.email}</h3>
+                  </div>
+                  <button type="button" onClick={() => setSelectedUserId('')} className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-black text-blue-700">
+                    Cerrar
+                  </button>
+                </div>
+
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <input
+                    value={userEditForm.name}
+                    onChange={(e) => setUserEditForm((v) => ({ ...v, name: e.target.value }))}
+                    className={inputClass}
+                    placeholder="Nombre completo"
+                    required
+                  />
+                  <input
+                    value={userEditForm.email}
+                    onChange={(e) => setUserEditForm((v) => ({ ...v, email: e.target.value }))}
+                    className={inputClass}
+                    placeholder="Email"
+                    type="email"
+                    required
+                  />
+                  <div className="relative">
+                    <input
+                      value={userEditForm.password}
+                      onChange={(e) => setUserEditForm((v) => ({ ...v, password: e.target.value }))}
+                      className={`${inputClass} pr-20`}
+                      placeholder="Nueva clave opcional"
+                      type={showEditPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEditPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800"
+                    >
+                      {showEditPassword ? 'Ocultar' : 'Ver'}
+                    </button>
+                  </div>
+                  <select value={userEditForm.role} onChange={(e) => setUserEditForm((v) => ({ ...v, role: e.target.value as 'admin' | 'user' }))} className={inputClass}>
+                    <option value="user">Usuario</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                  <select value={userEditForm.centerId} onChange={(e) => setUserEditForm((v) => ({ ...v, centerId: e.target.value }))} className={inputClass}>
+                    <option value="">Sin centro / todos si es Admin</option>
+                    {centers.map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}
+                  </select>
+                  <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={userEditForm.active}
+                      onChange={(e) => setUserEditForm((v) => ({ ...v, active: e.target.checked }))}
+                      className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    Usuario activo
+                  </label>
+                </div>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <button className="h-12 rounded-2xl bg-blue-600 text-sm font-black text-white">Guardar cambios</button>
+                  <button type="button" onClick={() => setUserActive(selectedUser, !selectedUser.active)} className="h-12 rounded-2xl border border-amber-200 bg-white text-sm font-black text-amber-700">
+                    {selectedUser.active ? 'Desactivar' : 'Reactivar'}
+                  </button>
+                  <button type="button" onClick={() => deleteUser(selectedUser)} className="h-12 rounded-2xl border border-red-200 bg-white text-sm font-black text-red-600">
+                    Eliminar definitivo
+                  </button>
+                </div>
+              </form>
+            )}
+
             <div className="mt-5 space-y-3">
               {users.map((user) => (
-                <div key={user.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
+                <div key={user.id} className={`flex flex-col gap-3 rounded-2xl border p-4 md:flex-row md:items-center md:justify-between ${user.active ? 'border-slate-200 bg-slate-50' : 'border-amber-200 bg-amber-50'}`}>
                   <div>
-                    <p className="font-black text-slate-950">{user.name || <span className="italic text-slate-400">Sin nombre</span>}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-black text-slate-950">{user.name || <span className="italic text-slate-400">Sin nombre</span>}</p>
+                      <span className={`rounded-full px-2 py-1 text-[11px] font-black uppercase tracking-[0.12em] ${user.active ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {user.active ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </div>
                     <p className="text-sm text-slate-500">{user.email}</p>
                     <p className="text-xs text-slate-400">{centers.find((center) => center.id === user.centerId)?.name ?? 'Sin centro'}</p>
                   </div>
-                  <div className="flex gap-2">
-                    <select value={user.role} onChange={(e) => updateUserRole(user, e.target.value as 'admin' | 'user')} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold">
-                      <option value="user">Usuario</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                    <select value={user.centerId ?? ''} onChange={(e) => updateUserCenter(user, e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold">
-                      <option value="">Sin centro</option>
-                      {centers.map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}
-                    </select>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <button type="button" onClick={() => setSelectedUserId(user.id)} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">Editar</button>
+                    <button type="button" onClick={() => setUserActive(user, !user.active)} className="rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs font-black text-amber-700">
+                      {user.active ? 'Desactivar' : 'Reactivar'}
+                    </button>
+                    <button type="button" onClick={() => deleteUser(user)} className="rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-black text-red-600">Eliminar</button>
                   </div>
                 </div>
               ))}

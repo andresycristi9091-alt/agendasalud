@@ -74,6 +74,13 @@ Ultimo foco implementado:
   - El formulario Admin permite marcar el profesional como activo/inactivo.
   - El boton `Desactivar` deja al profesional fuera del agendamiento publico y evita depender de ventanas `confirm` del navegador.
   - Los profesionales inactivos se muestran con estado `Inactivo` y boton `Reactivar`.
+- Admin / usuarios:
+  - El panel Admin permite editar usuario completo: nombre, email, nueva clave opcional, rol, centro y estado activo.
+  - Los usuarios pueden desactivarse/reactivarse sin perder el registro.
+  - `DELETE /api/admin/users/[id]` mantiene desactivacion si no se envia `?hard=true`.
+  - `DELETE /api/admin/users/[id]?hard=true` elimina definitivamente el usuario.
+  - En usuarios internos de Google Sheets el borrado definitivo elimina la fila de la hoja `users`.
+  - En Supabase el borrado definitivo usa `supabase.auth.admin.deleteUser`.
 - Login profesional:
   - Normalizado en ASCII para evitar mojibake.
   - Muestra alternativas tipo TrialNode: Codigo via WhatsApp, Enlace via Email e Ingresar con contrasena.

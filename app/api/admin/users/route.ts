@@ -25,12 +25,13 @@ export async function GET() {
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
       const users = await getManagedUsers()
       return NextResponse.json({
-        users: users.filter((user) => user.active).map((user) => ({
+        users: users.map((user) => ({
           id: user.id,
           email: user.email,
           name: user.name,
           role: user.role,
           centerId: user.centerId,
+          active: user.active,
           createdAt: user.createdAt,
           source: 'AgendaSalud',
         })),
@@ -49,6 +50,7 @@ export async function GET() {
         name: resolveSupabaseName(user),
         role: user.user_metadata?.role ?? 'user',
         centerId: user.user_metadata?.centerId ?? '',
+        active: !user.banned_until,
         createdAt: user.created_at,
         lastSignInAt: user.last_sign_in_at,
         source: 'Supabase',
@@ -96,6 +98,7 @@ export async function POST(req: Request) {
           name: user.name,
           role: user.role,
           centerId: user.centerId,
+          active: user.active,
           source: 'AgendaSalud',
         },
       }, { status: 201 })
@@ -122,6 +125,7 @@ export async function POST(req: Request) {
         name: data.user.user_metadata?.name ?? '',
         role: data.user.user_metadata?.role ?? 'user',
         centerId: data.user.user_metadata?.centerId ?? '',
+        active: !data.user.banned_until,
         source: 'Supabase',
       },
     }, { status: 201 })

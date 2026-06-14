@@ -402,6 +402,8 @@ npm run build      # verificar que compila sin errores
 - Login dual: Supabase + HMAC local
 - Cambio de clave directo desde dashboard (modo directo + recovery por email)
 - Admin puede crear usuarios con nombre y clave temporal
+- Admin puede editar usuarios completos: nombre, email, clave, rol, centro y estado activo
+- Admin puede desactivar/reactivar usuarios o eliminarlos definitivamente
 - Resolucion correcta del nombre de usuario en Supabase (5 campos de metadatos)
 - Estado reagendada en el schema de Appointment
 

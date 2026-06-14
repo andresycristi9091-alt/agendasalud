@@ -67,10 +67,12 @@ export const AdminUserCreateSchema = z.object({
 })
 
 export const AdminUserUpdateSchema = z.object({
+  email: z.string().email().optional(),
   role: z.enum(['admin', 'user']).optional(),
   name: z.string().min(2).max(120).optional(),
   password: z.string().min(8).optional().or(z.literal('')),
   centerId: z.string().optional(),
+  active: z.boolean().optional(),
 })
 
 export const AdminCenterSchema = z.object({
