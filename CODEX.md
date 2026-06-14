@@ -407,6 +407,7 @@ npm run build      # verificar que compila sin errores
 - Admin puede crear usuarios con nombre y clave temporal
 - Admin puede editar usuarios completos: nombre, email, clave, rol, centro y estado activo
 - Admin puede desactivar/reactivar usuarios o eliminarlos definitivamente
+- Admin siempre administra usuarios internos de AgendaSalud desde Google Sheets aunque exista `SUPABASE_SERVICE_ROLE_KEY`; Supabase se usa como sincronizacion secundaria, no como fuente unica.
 - Admin puede editar todos los datos de profesionales, desactivar/reactivar o eliminarlos definitivamente
 - Rate limiting inicial en login admin/profesional, reserva publica, busqueda de citas por email, cancelacion publica y cambio de clave
 - Resolucion correcta del nombre de usuario en Supabase (5 campos de metadatos)

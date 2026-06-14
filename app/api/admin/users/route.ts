@@ -6,6 +6,18 @@ import { AdminUserCreateSchema } from '@/lib/validation'
 import { createManagedUser, getManagedUsers } from '@/lib/google/sheets'
 import { hashPassword } from '@/lib/auth/password'
 
+type AdminUserPayload = {
+  id: string
+  email: string
+  name: string
+  role: 'admin' | 'user'
+  centerId: string
+  active: boolean
+  createdAt?: string
+  lastSignInAt?: string | null
+  source: 'AgendaSalud' | 'Supabase'
+}
+
 function resolveSupabaseName(user: User): string {
   const meta = user.user_metadata ?? {}
   const candidates = [
@@ -18,44 +30,55 @@ function resolveSupabaseName(user: User): string {
   return candidates.find((v) => typeof v === 'string' && v.trim().length > 0) ?? ''
 }
 
+function mapManagedUser(user: Awaited<ReturnType<typeof getManagedUsers>>[number]): AdminUserPayload {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    centerId: user.centerId,
+    active: user.active,
+    createdAt: user.createdAt,
+    source: 'AgendaSalud',
+  }
+}
+
+function mapSupabaseUser(user: User): AdminUserPayload {
+  return {
+    id: user.id,
+    email: user.email ?? '',
+    name: resolveSupabaseName(user),
+    role: user.user_metadata?.role === 'admin' ? 'admin' : 'user',
+    centerId: user.user_metadata?.centerId ?? '',
+    active: !user.banned_until,
+    createdAt: user.created_at,
+    lastSignInAt: user.last_sign_in_at,
+    source: 'Supabase',
+  }
+}
+
 export async function GET() {
   try {
     await requireAdmin()
 
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      const users = await getManagedUsers()
-      return NextResponse.json({
-        users: users.map((user) => ({
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          centerId: user.centerId,
-          active: user.active,
-          createdAt: user.createdAt,
-          source: 'AgendaSalud',
-        })),
-      })
+    const managedUsers = await getManagedUsers()
+    const users: AdminUserPayload[] = managedUsers.map(mapManagedUser)
+
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const supabase = createAdminSupabaseClient()
+      const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 100 })
+
+      if (error) throw error
+
+      const managedEmails = new Set(managedUsers.map((user) => user.email.toLowerCase()))
+      users.push(
+        ...data.users
+          .filter((user) => user.email && !managedEmails.has(user.email.toLowerCase()))
+          .map(mapSupabaseUser)
+      )
     }
 
-    const supabase = createAdminSupabaseClient()
-    const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 100 })
-
-    if (error) throw error
-
-    return NextResponse.json({
-      users: data.users.map((user) => ({
-        id: user.id,
-        email: user.email,
-        name: resolveSupabaseName(user),
-        role: user.user_metadata?.role ?? 'user',
-        centerId: user.user_metadata?.centerId ?? '',
-        active: !user.banned_until,
-        createdAt: user.created_at,
-        lastSignInAt: user.last_sign_in_at,
-        source: 'Supabase',
-      })),
-    })
+    return NextResponse.json({ users })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No pudimos listar usuarios'
     return NextResponse.json({ error: message }, { status: 500 })
@@ -72,62 +95,44 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Datos invalidos', details: parsed.error.flatten() }, { status: 400 })
     }
 
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      const existing = await getManagedUsers()
-      const email = parsed.data.email.toLowerCase()
-      if (existing.some((user) => user.email.toLowerCase() === email && user.active)) {
-        return NextResponse.json({ error: 'Ya existe un usuario activo con ese correo.' }, { status: 409 })
-      }
-
-      const centerId = parsed.data.centerId || (parsed.data.role === 'user' ? (process.env.DEFAULT_CENTER_ID || 'center-neuroplus') : '')
-
-      const user = await createManagedUser({
-        id: uuidv4(),
-        email,
-        name: parsed.data.name,
-        passwordHash: hashPassword(parsed.data.password),
-        role: parsed.data.role,
-        centerId,
-        active: true,
-      })
-
-      return NextResponse.json({
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          centerId: user.centerId,
-          active: user.active,
-          source: 'AgendaSalud',
-        },
-      }, { status: 201 })
+    const existing = await getManagedUsers()
+    const email = parsed.data.email.toLowerCase()
+    if (existing.some((user) => user.email.toLowerCase() === email)) {
+      return NextResponse.json({ error: 'Ya existe un usuario con ese correo. Editalo o reactivalo desde la lista.' }, { status: 409 })
     }
 
-    const supabase = createAdminSupabaseClient()
-    const { data, error } = await supabase.auth.admin.createUser({
-      email: parsed.data.email,
-      password: parsed.data.password,
-      email_confirm: true,
-      user_metadata: {
-        name: parsed.data.name,
-        role: parsed.data.role,
-        centerId: parsed.data.centerId || (parsed.data.role === 'user' ? (process.env.DEFAULT_CENTER_ID || 'center-neuroplus') : ''),
-      },
+    const centerId = parsed.data.centerId || (parsed.data.role === 'user' ? (process.env.DEFAULT_CENTER_ID || 'center-neuroplus') : '')
+
+    const user = await createManagedUser({
+      id: uuidv4(),
+      email,
+      name: parsed.data.name,
+      passwordHash: hashPassword(parsed.data.password),
+      role: parsed.data.role,
+      centerId,
+      active: true,
     })
 
-    if (error) throw error
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const supabase = createAdminSupabaseClient()
+      const { error } = await supabase.auth.admin.createUser({
+        email,
+        password: parsed.data.password,
+        email_confirm: true,
+        user_metadata: {
+          name: parsed.data.name,
+          role: parsed.data.role,
+          centerId,
+        },
+      })
+
+      if (error && !error.message.toLowerCase().includes('already')) {
+        console.warn('[admin users] No se pudo sincronizar usuario en Supabase:', error.message)
+      }
+    }
 
     return NextResponse.json({
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.user_metadata?.name ?? '',
-        role: data.user.user_metadata?.role ?? 'user',
-        centerId: data.user.user_metadata?.centerId ?? '',
-        active: !data.user.banned_until,
-        source: 'Supabase',
-      },
+      user: mapManagedUser(user),
     }, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No pudimos crear usuario'

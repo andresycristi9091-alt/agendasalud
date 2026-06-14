@@ -77,6 +77,12 @@ Ultimo foco implementado:
   - Se agrego `Eliminar` / `Eliminar definitivo` para borrar el profesional de la hoja `professionals`.
   - `DELETE /api/admin/professionals/[id]` desactiva; `DELETE /api/admin/professionals/[id]?hard=true` elimina la fila.
 - Admin / usuarios:
+  - El registro maestro del panel Admin para usuarios internos es Google Sheets (`users`).
+  - Si existe `SUPABASE_SERVICE_ROLE_KEY`, Supabase se sincroniza como apoyo, pero no reemplaza el control interno.
+  - `GET /api/admin/users` lista usuarios internos de AgendaSalud y agrega usuarios Supabase solo si no existe un usuario interno con el mismo email.
+  - `POST /api/admin/users` crea siempre usuario interno con clave PBKDF2 y, si Supabase esta disponible, intenta sincronizar la cuenta.
+  - `PATCH /api/admin/users/[id]` edita usuarios internos aunque Supabase este activo: email, nombre, clave, rol, centro y estado.
+  - `DELETE /api/admin/users/[id]` desactiva o elimina usuarios internos aunque Supabase este activo; si hay cuenta Supabase equivalente por email, intenta sincronizar la accion.
   - El panel Admin permite editar usuario completo: nombre, email, nueva clave opcional, rol, centro y estado activo.
   - Los usuarios pueden desactivarse/reactivarse sin perder el registro.
   - `DELETE /api/admin/users/[id]` mantiene desactivacion si no se envia `?hard=true`.

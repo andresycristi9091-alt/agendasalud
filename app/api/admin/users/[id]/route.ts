@@ -4,6 +4,33 @@ import { AdminUserUpdateSchema } from '@/lib/validation'
 import { hashPassword } from '@/lib/auth/password'
 import { deleteManagedUser, getManagedUsers, updateManagedUser } from '@/lib/google/sheets'
 
+async function findSupabaseUserByEmail(email: string) {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return null
+  const supabase = createAdminSupabaseClient()
+  const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 100 })
+  if (error) return null
+  return data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase()) ?? null
+}
+
+async function syncSupabaseUserByEmail(
+  originalEmail: string,
+  payload: {
+    email?: string
+    password?: string
+    ban_duration?: string
+    user_metadata?: { role?: string; name?: string; centerId?: string }
+  }
+) {
+  const supabaseUser = await findSupabaseUserByEmail(originalEmail)
+  if (!supabaseUser) return
+
+  const supabase = createAdminSupabaseClient()
+  const { error } = await supabase.auth.admin.updateUserById(supabaseUser.id, payload)
+  if (error) {
+    console.warn('[admin users] No se pudo sincronizar usuario en Supabase:', error.message)
+  }
+}
+
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -18,9 +45,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Datos invalidos', details: parsed.error.flatten() }, { status: 400 })
     }
 
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const users = await getManagedUsers()
+    const managedUser = users.find((user) => user.id === id)
+
+    if (managedUser) {
       if (parsed.data.email) {
-        const users = await getManagedUsers()
         const duplicate = users.some((user) =>
           user.id !== id &&
           user.email.toLowerCase() === parsed.data.email!.toLowerCase()
@@ -39,6 +68,18 @@ export async function PATCH(
         ...(parsed.data.password ? { passwordHash: hashPassword(parsed.data.password) } : {}),
       })
 
+      await syncSupabaseUserByEmail(managedUser.email, {
+        ...(parsed.data.email ? { email: parsed.data.email.toLowerCase() } : {}),
+        ...(parsed.data.password ? { password: parsed.data.password } : {}),
+        user_metadata: {
+          ...(parsed.data.role ? { role: parsed.data.role } : {}),
+          ...(parsed.data.name ? { name: parsed.data.name } : {}),
+          ...(parsed.data.centerId !== undefined ? { centerId: parsed.data.centerId } : {}),
+        },
+        ...(parsed.data.active === false ? { ban_duration: '876000h' } : {}),
+        ...(parsed.data.active === true ? { ban_duration: 'none' } : {}),
+      })
+
       return NextResponse.json({
         user: {
           id: updated.id,
@@ -50,6 +91,10 @@ export async function PATCH(
           source: 'AgendaSalud',
         },
       })
+    }
+
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
     }
 
     const supabase = createAdminSupabaseClient()
@@ -99,13 +144,32 @@ export async function DELETE(
     const { id } = await params
     const hardDelete = new URL(req.url).searchParams.get('hard') === 'true'
 
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const users = await getManagedUsers()
+    const managedUser = users.find((user) => user.id === id)
+
+    if (managedUser) {
       if (hardDelete) {
         await deleteManagedUser(id)
       } else {
         await updateManagedUser(id, { active: false })
       }
+
+      if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        const supabaseUser = await findSupabaseUserByEmail(managedUser.email)
+        if (supabaseUser) {
+          const supabase = createAdminSupabaseClient()
+          const { error } = hardDelete
+            ? await supabase.auth.admin.deleteUser(supabaseUser.id)
+            : await supabase.auth.admin.updateUserById(supabaseUser.id, { ban_duration: '876000h' })
+          if (error) console.warn('[admin users] No se pudo sincronizar eliminacion en Supabase:', error.message)
+        }
+      }
+
       return NextResponse.json({ ok: true })
+    }
+
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
     }
 
     const supabase = createAdminSupabaseClient()
