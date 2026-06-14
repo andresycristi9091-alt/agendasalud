@@ -491,7 +491,7 @@ export function AdminWorkspace() {
                         : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
                     }`}
                   >
-                    {pendingDeleteProfessionalId === selectedProfessionalId ? 'Confirmar eliminacion' : 'Eliminar definitivo'}
+                    {pendingDeleteProfessionalId === selectedProfessionalId ? 'Confirmar eliminacion' : 'Eliminar registro'}
                   </button>
                 </div>
               )}
@@ -516,6 +516,12 @@ export function AdminWorkspace() {
           </Panel>
 
           <Panel title="Profesionales publicados" eyebrow="Directorio">
+            <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+              <p className="text-sm font-black text-blue-900">Acciones del directorio</p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-blue-700">
+                Usa <span className="font-black">Quitar del directorio</span> para ocultar una persona del agendamiento publico. Usa <span className="font-black">Eliminar registro</span> solo si quieres borrar el registro administrativo.
+              </p>
+            </div>
             <div className="grid gap-3 md:grid-cols-2">
               {professionals.map((professional) => (
                 <div key={professional.id} className={`rounded-2xl border p-4 ${professional.active ? 'border-slate-200 bg-slate-50' : 'border-amber-200 bg-amber-50'}`}>
@@ -542,7 +548,7 @@ export function AdminWorkspace() {
                     </a>
                     <a href={`/agendar/${professional.slug}`} target="_blank" className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-xs font-black text-slate-600 transition hover:bg-slate-100">Ver</a>
                     {professional.active ? (
-                      <button type="button" onClick={() => deactivateProfessional(professional.id)} className="rounded-xl border border-red-200 bg-white px-3 py-3 text-xs font-black text-red-600 transition hover:bg-red-50">Desactivar</button>
+                      <button type="button" onClick={() => deactivateProfessional(professional.id)} className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs font-black text-amber-700 transition hover:bg-amber-100">Quitar del directorio</button>
                     ) : (
                       <button type="button" onClick={() => reactivateProfessional(professional.id)} className="rounded-xl border border-emerald-200 bg-white px-3 py-3 text-xs font-black text-emerald-700 transition hover:bg-emerald-50">Reactivar</button>
                     )}
@@ -555,7 +561,7 @@ export function AdminWorkspace() {
                           : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
                       }`}
                     >
-                      {pendingDeleteProfessionalId === professional.id ? 'Confirmar eliminacion' : 'Eliminar'}
+                      {pendingDeleteProfessionalId === professional.id ? 'Confirmar eliminacion' : 'Eliminar registro'}
                     </button>
                   </div>
                   {pendingDeleteProfessionalId === professional.id && (

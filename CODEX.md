@@ -408,7 +408,7 @@ npm run build      # verificar que compila sin errores
 - Admin puede editar usuarios completos: nombre, email, clave, rol, centro y estado activo
 - Admin puede desactivar/reactivar usuarios o eliminarlos definitivamente
 - Admin siempre administra usuarios internos de AgendaSalud desde Google Sheets aunque exista `SUPABASE_SERVICE_ROLE_KEY`; Supabase se usa como sincronizacion secundaria, no como fuente unica.
-- Admin puede editar todos los datos de profesionales, desactivar/reactivar o eliminarlos definitivamente
+- Admin puede editar todos los datos de profesionales, quitarlos del directorio, reactivarlos o eliminar el registro administrativo.
 - Si el borrado definitivo de profesional falla en Google Sheets, la API lo desactiva como fallback para quitarlo del directorio publico.
 - Rate limiting inicial en login admin/profesional, reserva publica, busqueda de citas por email, cancelacion publica y cambio de clave
 - Resolucion correcta del nombre de usuario en Supabase (5 campos de metadatos)

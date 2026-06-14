@@ -72,9 +72,11 @@ Ultimo foco implementado:
 - Admin / profesionales publicados:
   - El boton `Editar` es un enlace con ancla a `#admin-professional-form`, carga el profesional en el formulario Admin y desplaza la vista al formulario.
   - El formulario Admin permite editar todos los datos del profesional: centro, nombre, slug, tipo, especialidad, foto, correo, telefono, Calendar ID, duracion, zona horaria, descripcion y estado activo.
-  - El boton `Desactivar` deja al profesional fuera del agendamiento publico y evita depender de ventanas `confirm` del navegador.
+  - En `Profesionales publicados` aparece una franja `Acciones del directorio`.
+  - El boton `Quitar del directorio` deja al profesional fuera del agendamiento publico sin borrar el registro.
+  - El boton `Eliminar registro` intenta borrar el registro administrativo con confirmacion inline y sin `window.confirm`.
   - Los profesionales inactivos se muestran con estado `Inactivo` y boton `Reactivar`.
-  - Se agrego `Eliminar` / `Eliminar definitivo` con confirmacion inline en la tarjeta/formulario, sin `window.confirm`.
+  - `Eliminar registro` aparece tanto en la tarjeta como en el formulario de edicion.
   - `DELETE /api/admin/professionals/[id]` desactiva; `DELETE /api/admin/professionals/[id]?hard=true` intenta eliminar la fila.
   - Si Google Sheets falla al borrar la fila, la API desactiva el profesional como fallback para sacarlo del directorio publico.
 - Admin / usuarios:
