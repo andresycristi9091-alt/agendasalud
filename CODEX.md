@@ -1,318 +1,433 @@
-# AgendaSalud — Documento de Handoff para Codex
+# AgendaSalud - Contexto completo del proyecto
 
-> Ultima actualizacion: Junio 2026  
-> Estado: Base estabilizada. Ver secciones **Pendiente** para trabajo siguiente.
-
----
-
-## 1. Que es este proyecto
-
-AgendaSalud es un SaaS de agendamiento medico en Next.js 16 App Router + TypeScript + Tailwind CSS.
-
-**Dos experiencias principales:**
-- `/agendar` y `/agendar/[slug]` — paciente reserva hora online
-- `/dashboard` — profesional/centro gestiona disponibilidad y citas
-- `/dashboard/admin` — admin multi-centro crea centros, profesionales y usuarios
-
-**Stack:**
-- Next.js 16 (App Router), TypeScript, Tailwind CSS 4
-- Supabase Auth (profesionales/usuarios internos)
-- Google Sheets como base de datos (profesionales, citas, disponibilidad, usuarios)
-- Google Calendar para eventos y deteccion de ocupacion (FreeBusy)
-- Zona horaria: `America/Santiago`
-- Sin ORM ni base de datos SQL; toda persistencia en Google Sheets
+> Lee este archivo completo antes de tocar codigo.
+> Actualiza las secciones "Estado actual" y "Pendiente" cuando termines trabajo.
 
 ---
 
-## 2. Variables de entorno requeridas
+## Producto
 
-Ver `.env.example` para lista completa. Las criticas:
+AgendaSalud es un SaaS de agendamiento medico hecho en Chile. Permite a pacientes reservar horas con profesionales de salud en linea, con confirmacion por correo, recordatorios automaticos y sincronizacion con Google Calendar.
 
-| Variable | Descripcion |
+Tres perfiles:
+- Paciente: agenda, cancela y ve sus citas sin registro (solo email)
+- Profesional: gestiona su agenda, disponibilidad y citas desde un dashboard
+- Administrador: crea y administra centros, profesionales y usuarios
+
+URL de produccion: https://agendasalud.vercel.app
+
+---
+
+## Stack tecnico
+
+| Capa | Tecnologia |
 |---|---|
-| `ADMIN_SESSION_SECRET` | HMAC para sesiones locales. **Obligatorio.** Min 32 chars. |
-| `ADMIN_EMAILS` | Correos admin separados por coma. **Obligatorio.** |
-| `BOOTSTRAP_SECRET` | Secreto para el endpoint `/api/admin/bootstrap`. Solo al primer deploy. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Para crear/editar usuarios Supabase desde Admin. |
-| `GOOGLE_CLIENT_EMAIL` | Service account Google. |
-| `GOOGLE_PRIVATE_KEY` | Clave privada del service account. |
-| `GOOGLE_SHEETS_ID` | ID del Google Spreadsheet principal. |
-| `NEXT_PUBLIC_APP_URL` | URL base de la app (ej: `https://agendasalud.vercel.app`). |
-| `RESEND_API_KEY` | Para emails de confirmacion (opcional pero recomendado). |
-| `EMAIL_FROM` | Remitente de emails (ej: `AgendaSalud <noreply@...>`). |
+| Framework | Next.js 16 App Router (Turbopack) |
+| Lenguaje | TypeScript estricto |
+| Estilos | Tailwind CSS |
+| Auth profesional | Supabase Auth |
+| Auth admin/usuario | HMAC local (cookie agendasalud_admin_session) |
+| Base de datos | Google Sheets (API v4 con service account) |
+| Calendar | Google Calendar API (FreeBusy + eventos) |
+| Email | Resend API |
+| Cron | Vercel Cron Jobs (vercel.json) |
+| Deploy | Vercel |
+| Zona horaria | America/Santiago (toda la logica de hora es en hora chilena) |
+| Validacion | Zod |
+| UUID | uuid v4 |
 
 ---
 
-## 3. Archivos clave
+## Rutas de la aplicacion
+
+### Publicas (sin autenticacion)
+
+| Ruta | Descripcion |
+|---|---|
+| / | Landing page comercial |
+| /agendar | Directorio de profesionales |
+| /agendar/[slug] | Funnel de agendamiento por profesional |
+| /mis-citas | Paciente busca sus citas por email (sin registro) |
+| /cancelar/[id] | Paciente cancela una cita desde el link del correo |
+| /login | Login unificado (profesional via Supabase, admin/usuario via HMAC) |
+| /cambiar-contrasena | Cambio de clave via email recovery |
+
+### Dashboard (requiere sesion)
+
+| Ruta | Descripcion |
+|---|---|
+| /dashboard | Redirige a la sub-ruta correcta segun rol |
+| /dashboard/agenda | Vista de agenda del profesional |
+| /dashboard/citas | Lista de citas del profesional |
+| /dashboard/disponibilidad | Configuracion de horarios |
+| /dashboard/nueva-cita | Crear cita manual |
+| /dashboard/configuracion | Perfil del profesional (vista limitada) |
+| /dashboard/perfil | Cambio de clave |
+| /dashboard/admin | Panel admin (solo rol admin) |
+
+### APIs publicas
+
+| Metodo + Ruta | Funcion |
+|---|---|
+| GET /api/public/professionals | Lista de profesionales activos |
+| GET /api/public/professional/[slug] | Datos de un profesional |
+| GET /api/public/availability/[slug]?date=YYYY-MM-DD | Slots disponibles para una fecha |
+| GET /api/public/availability/batch/[slug]?from=&to= | Mapa de disponibilidad por dia (max 30 dias) |
+| POST /api/public/appointments | Crear nueva cita (paciente) |
+| GET /api/public/appointments/[id] | Ver datos de una cita por ID |
+| POST /api/public/appointments/[id]/cancel | Cancelar cita (requiere email del paciente) |
+| POST /api/public/appointments/by-email | Buscar citas de un paciente por email |
+
+### APIs dashboard (requiere sesion profesional/admin)
+
+| Metodo + Ruta | Funcion |
+|---|---|
+| GET /api/dashboard/professionals | Profesionales accesibles al usuario logueado |
+| PATCH /api/dashboard/professionals | Editar perfil del profesional (solo admin) |
+| PATCH /api/dashboard/professionals/password | Cambiar clave (usuarios HMAC locales) |
+| GET /api/dashboard/appointments | Citas del profesional (con filtros) |
+| POST /api/dashboard/appointments | Crear cita manual desde el dashboard |
+| PATCH /api/dashboard/appointments/[id] | Cambiar estado de una cita |
+| GET /api/dashboard/availability | Bloques de disponibilidad |
+| POST /api/dashboard/availability | Crear bloque |
+| DELETE /api/dashboard/availability/[id] | Eliminar bloque |
+
+### APIs admin (requiere rol admin)
+
+| Metodo + Ruta | Funcion |
+|---|---|
+| POST /api/admin/login | Login admin con email+password |
+| GET /api/admin/me | Sesion actual |
+| POST /api/admin/bootstrap | Crear/actualizar usuario admin inicial |
+| GET/POST /api/admin/professionals | Listar y crear profesionales |
+| PATCH/DELETE /api/admin/professionals/[id] | Editar o desactivar profesional |
+| GET/POST /api/admin/users | Listar y crear usuarios |
+| PATCH/DELETE /api/admin/users/[id] | Editar o desactivar usuario |
+| GET/POST /api/admin/centers | Listar y crear centros |
+| PATCH /api/admin/centers/[id] | Editar centro |
+| GET /api/cron/reminders | Cron de recordatorios (Vercel, cada hora) |
+
+---
+
+## Archivos clave
+
+### Logica de negocio
 
 ```
 lib/
+  appointments.ts        Motor de reserva: mutex + Calendar + Sheets + emails
+  availability.ts        Generacion de slots libres: Sheets + Google Calendar FreeBusy
+  reminders.ts           Logica de recordatorios automaticos (24h y 2h antes)
+  email.ts               Templates HTML y envio via Resend:
+                           sendBookingConfirmation      (paciente al reservar)
+                           sendProfessionalNotification (profesional al reservar)
+                           sendCancellationEmail        (paciente al cancelar)
+                           sendReminderEmail            (recordatorio automatico)
+  validation.ts          Schemas Zod para todas las entidades
+  date.ts                Utilidades de hora chilena (todayString, nowInChile, etc.)
+  mutex.ts               Lock in-memory para prevenir doble reserva concurrente
   auth/
-    local-admin-session.ts  — Sesiones HMAC para usuarios locales (no Supabase)
-    admin.ts                — getAdminEmails(), requireAdmin(), getCurrentUserRole()
-    password.ts             — hashPassword/verifyPassword con PBKDF2 (SHA-256 legacy fallback)
+    admin.ts             getCurrentUserRole(), requireAdmin(), createAdminSupabaseClient()
+    local-admin-session.ts  Sesion HMAC (cookie agendasalud_admin_session)
+    password.ts          hashPassword() y verifyPassword() con PBKDF2
+    permissions.ts       requireAppointmentAccess() - valida acceso a la cita
   google/
-    sheets.ts               — Toda la lectura/escritura de Google Sheets
-    calendar.ts             — Google Calendar y FreeBusy
-  appointments.ts           — Flujo completo de booking con mutex anti-doble-reserva
-  availability.ts           — Generacion de slots disponibles
-  email.ts                  — Envio de confirmacion via Resend API
-  mutex.ts                  — Lock en memoria para prevenir doble-booking concurrente
-  validation.ts             — Schemas Zod para todos los inputs
-  date.ts                   — Utilidades de hora chilena (America/Santiago)
+    sheets.ts            Toda la lectura/escritura de Google Sheets
+    calendar.ts          createCalendarEvent(), cancelCalendarEvent(), getBusySlots()
+  supabase/
+    client.ts            Cliente Supabase para el navegador
+    server.ts            Cliente Supabase para el servidor
+    middleware.ts        Supabase middleware helper
+```
 
+### Componentes principales
+
+```
 components/
   public/
-    PublicBookingPage.tsx   — Funnel de agendamiento del paciente (4 pasos)
-    ProfessionalDirectoryPage.tsx — Directorio multi-profesional
+    LandingPage.tsx           Landing con Hero, HowItWorks, RoleBenefits, Features, Security, CTA
+    ProfessionalDirectoryPage.tsx  Directorio multiprofesional /agendar
+    PublicBookingPage.tsx     Funnel de agendamiento: fecha -> slot -> formulario -> exito
+    CancelAppointmentPage.tsx Cancelacion publica desde link del correo
+    MisCitasPage.tsx          Busqueda de citas por email sin registro
+    PublicTrustFooter.tsx     Footer de confianza en paginas publicas
   dashboard/
-    ClientWorkspace.tsx     — Dashboard del profesional/centro
+    ClientWorkspace.tsx       Dashboard profesional completo (MONOLITO - candidato a split)
+    ProfilePasswordPage.tsx   Cambio de clave (modo directo y por correo)
   admin/
-    AdminWorkspace.tsx      — Panel multi-centro del admin
-
-app/api/
-  public/
-    appointments/route.ts   — POST /api/public/appointments (crear cita)
-    availability/[slug]/route.ts — GET disponibilidad por fecha
-    professional/[slug]/route.ts — GET datos del profesional por slug
-    professionals/route.ts  — GET directorio de profesionales
-  admin/
-    bootstrap/route.ts      — POST setup inicial admin (requiere BOOTSTRAP_SECRET)
-    me/route.ts             — GET usuario actual autenticado
-    professionals/          — CRUD profesionales
-    centers/                — CRUD centros
-    users/                  — CRUD usuarios
-  dashboard/
-    appointments/           — GET/PATCH citas del profesional
-    availability/           — GET/POST/DELETE bloques de disponibilidad
-    professionals/route.ts  — GET/PATCH perfil del profesional
-
-lib/supabase/middleware.ts  — Protege /dashboard/* y /api/admin|dashboard/* con 401
-next.config.ts              — Security headers (X-Frame-Options, HSTS, etc.)
+    AdminWorkspace.tsx        Panel admin (MONOLITO - candidato a split)
+  agenda/
+    AgendaDia.tsx
+    TarjetaCita.tsx
+    FechaSelectorAgenda.tsx
+    FormNuevaCita.tsx
+    FormSetup.tsx
+  ui/
+    Badge.tsx
+    Modal.tsx
+    Logo.tsx
+    LogoutButton.tsx
+  AgendaSaludLoginPage.tsx    Pantalla de login unificada
 ```
 
 ---
 
-## 4. Lo que se corrigio en esta sesion
+## Google Sheets: estructura de hojas
 
-### Seguridad (todos los CRITICAL y HIGH)
-
-| # | Severidad | Archivo | Fix aplicado |
-|---|---|---|---|
-| 1 | CRITICAL | `lib/auth/local-admin-session.ts` | `getSecret()` ya no hace fallback a `NEXT_PUBLIC_*`. Falla duro si `ADMIN_SESSION_SECRET` no esta configurado. |
-| 2 | CRITICAL | `lib/auth/admin.ts` | Eliminado `FALLBACK_ADMIN_EMAILS` con email personal hardcodeado. Solo usa `ADMIN_EMAILS` del env. |
-| 3 | CRITICAL | `lib/auth/password.ts` | Reemplazado SHA-256 con PBKDF2 (100,000 iteraciones, SHA-512). Mantiene fallback para hashes legacy. |
-| 4 | CRITICAL | `app/api/admin/bootstrap/route.ts` | Requiere `BOOTSTRAP_SECRET` en env + via header `Authorization: Bearer <secret>`. Contrasena minima 12 chars. |
-| 5 | CRITICAL | `lib/appointments.ts` + `lib/mutex.ts` | Mutex en memoria (TTL 30s) que elimina la race condition de doble-booking. Doble verificacion post-lock. |
-| 6 | HIGH | `next.config.ts` | Headers de seguridad: X-Frame-Options DENY, X-Content-Type-Options, HSTS, Referrer-Policy, Permissions-Policy. |
-| 7 | HIGH | `lib/supabase/middleware.ts` | Middleware ahora retorna 401 en `api/admin/*` y `api/dashboard/*` si no hay sesion valida. |
-| 8 | HIGH | `app/api/admin/me/route.ts` | Ahora retorna 401 si no hay sesion en lugar de siempre responder 200. |
-| 9 | HIGH | `lib/validation.ts` | `calendarId` con regex de validacion. `startTime < endTime` en `AppointmentSchema`. Fecha no puede ser pasada. |
-| 10 | MEDIUM | `lib/auth/local-admin-session.ts` | Comparacion HMAC ahora es constant-time (XOR byte a byte). |
-
-### Funcional — bugs criticos
-
-| Archivo | Fix |
-|---|---|
-| `lib/email.ts` (nuevo) | Servicio de email con Resend API via fetch (sin dependencias nuevas). HTML de confirmacion completo. |
-| `app/api/public/appointments/route.ts` | Llama `sendBookingConfirmation()` tras crear la cita. No bloquea la respuesta si el email falla. |
-| `components/dashboard/ClientWorkspace.tsx` | `StatusBadge` con colores segun estado (confirmada=verde, completada=azul, cancelada=rojo, no_asiste=amarillo). |
-| `components/dashboard/ClientWorkspace.tsx` | Paginacion de citas: boton "Ver todas (N)" en lugar del cap duro `.slice(0,5)`. |
-| `components/dashboard/ClientWorkspace.tsx` | `deleteAvailability` y `updateAppointment` con manejo de errores y feedback al usuario. |
-| `components/dashboard/ClientWorkspace.tsx` | Link publico usa `window.location.origin` en lugar de URL hardcodeada a produccion. |
-| `components/public/PublicBookingPage.tsx` | `SuccessState` con botones: "Agregar a Google Calendar" (deeplink) + "Agendar otra hora". |
-| `components/public/PublicBookingPage.tsx` | Rango de fechas: 21 dias iniciales, boton "Ver mas fechas" que extiende hasta 60 dias. |
-| `lib/availability.ts` | Deduplicacion de slots con `Set<string>` para bloques solapados. Ordenamiento por hora. Log de falla de Calendar. |
-| `.env.example` | Actualizado con todas las nuevas variables y documentacion inline. |
-
----
-
-## 5. Pendiente — Trabajo siguiente (priorizado)
-
-### P0 — Hacer antes de produccion real
-
-#### [SEC] Reemplazar mutex en memoria con Redis distribuido
-**Archivo:** `lib/mutex.ts`  
-El mutex actual es in-memory y no funciona en deploys multi-instancia (Vercel serverless con warm instances distintas).  
-**Solucion:** Usar [Upstash Redis](https://upstash.com) con `SET NX EX 30` como distributed lock.  
-```ts
-// Patron recomendado:
-import { Redis } from '@upstash/redis'
-const redis = Redis.fromEnv()
-const acquired = await redis.set(lockKey, '1', { nx: true, ex: 30 })
+### professionals (columnas A:Q)
 ```
-Requiere: `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN` en env.
-
-#### [SEC] Rate limiting en endpoints publicos
-**Archivos:** `app/api/public/appointments/route.ts`, `app/api/auth/login/route.ts`, `app/api/admin/login/route.ts`  
-Sin rate limiting actual. Usar `@upstash/ratelimit` con la misma instancia Redis de arriba.  
-```ts
-import { Ratelimit } from '@upstash/ratelimit'
-import { Redis } from '@upstash/redis'
-const ratelimit = new Ratelimit({ redis: Redis.fromEnv(), limiter: Ratelimit.slidingWindow(10, '1m') })
-const { success } = await ratelimit.limit(ip)
-if (!success) return NextResponse.json({ error: 'Demasiadas solicitudes' }, { status: 429 })
+id | slug | name | specialty | centerName | email | phone | calendarId |
+publicDescription | appointmentDurationDefault | timezone | active |
+createdAt | updatedAt | professionalType | photoUrl | centerId
 ```
 
-#### [UX] Verificar que el slot solicitado existe en la disponibilidad configurada
-**Archivo:** `app/api/public/appointments/route.ts`  
-Actualmente se puede reservar cualquier hora/fecha via API directa.  
-**Solucion:** Antes de `bookAppointment()`, llamar `getAvailableSlotsForDate()` y verificar que `startTime` aparece como disponible.
-
----
-
-### P1 — Alto valor para el usuario
-
-#### [UX] Indicadores de disponibilidad en el date-picker del paciente
-**Archivo:** `components/public/PublicBookingPage.tsx`  
-El paciente actualmente no sabe si un dia tiene slots antes de hacer click.  
-**Solucion:**  
-1. Crear endpoint `GET /api/public/availability/batch/[slug]?from=YYYY-MM-DD&to=YYYY-MM-DD` que retorne `{ [date]: boolean }`.  
-2. En `DateStep`, mostrar un punto verde debajo de las fechas con disponibilidad.  
-3. Hacer el fetch al montar el componente (1 request en lugar de N).
-
-Esqueleto del endpoint:
-```ts
-// app/api/public/availability/batch/[slug]/route.ts
-export async function GET(req: Request, { params }: { params: { slug: string } }) {
-  const { searchParams } = new URL(req.url)
-  const from = searchParams.get('from')
-  const to = searchParams.get('to')
-  // Iterar fechas entre from y to, llamar getAvailableSlotsForDate para cada una
-  // Retornar { "2026-06-15": true, "2026-06-16": false, ... }
-}
-```
-
-#### [UX] Sistema de recordatorios automaticos
-**No existe en el codigo actual.**  
-Recordar al paciente 48h y 2h antes de su cita reduce no-shows ~20%.  
-**Opciones:**
-- Cron job en Vercel (`vercel.json` con `crons`) que cada hora lee citas de Sheets y envia emails pendientes.
-- O Inngest / Trigger.dev para tareas programadas.  
-**Campos necesarios en Sheets:** `reminderSent48h` (boolean), `reminderSent2h` (boolean).
-
-#### [UX] Filtro FONASA / ISAPRE en directorio de profesionales
-**Archivo:** `components/public/ProfessionalDirectoryPage.tsx`  
-Agregar columna `previsiones` en Google Sheets (ej: `FONASA,ISAPRE Banmedica`) y filtro en el directorio.
-
-#### [UX] Tipo de cita con duracion diferenciada
-**Archivos:** `lib/validation.ts`, `components/dashboard/ClientWorkspace.tsx`, `lib/availability.ts`  
-Actualmente un profesional tiene una sola duracion. Agregar soporte para tipos de cita (nuevo paciente, control, procedimiento) con duraciones distintas.  
-Requiere nueva columna `appointmentTypes` en Sheets (JSON serializado) y selector en el funnel del paciente.
-
-#### [ADMIN] Edicion y desactivacion de centros
-**Archivo:** `components/admin/AdminWorkspace.tsx`, `app/api/admin/centers/[id]/route.ts`  
-El archivo del route existe pero no hay UI de edicion.  
-Agregar formulario de edicion igual al de creacion con PATCH al endpoint.
-
-#### [ADMIN] Confirmacion antes de desactivar profesional
-**Archivo:** `components/admin/AdminWorkspace.tsx`  
-Accion destructiva sin dialogo. Agregar modal de confirmacion simple con `window.confirm()` o un componente propio.
-
----
-
-### P2 — Diferenciacion de mercado
-
-#### [PRODUCTO] Sistema de reviews verificados
-Reviews solo visibles para pacientes que tuvieron cita (verificado por `appointmentId`).  
-Requiere: nueva hoja `reviews` en Sheets, endpoint POST `/api/public/reviews` con validacion de que el `appointmentId` pertenece al `patientEmail` del request, y seccion de reviews en `/agendar/[slug]`.
-
-#### [PRODUCTO] Waitlist automatica
-Cuando una cita se cancela, notificar al primer paciente en lista de espera.  
-Requiere: hoja `waitlist` en Sheets, webhook o polling post-cancelacion, email automatico via `lib/email.ts`.
-
-#### [PRODUCTO] Analytics para profesionales
-Dashboard con: tasa de utilizacion, no-shows por mes, horas pico, cancelaciones.  
-Todo calculable desde los datos de Sheets existentes — no requiere nueva infraestructura.
-
-#### [PRODUCTO] Booking familiar
-Permitir reservar para otra persona (hijo, adulto mayor) con campos: `isProxy: true`, `patientName` (quien asiste), `bookerName` (quien reserva).  
-Cambio minimo en `AppointmentSchema` y formulario.
-
-#### [PRODUCTO] Politica de no-show configurable
-Marcar pacientes con patron de no-show en Sheets y mostrar advertencia al profesional.
-
----
-
-## 6. Arquitectura de datos (Google Sheets)
-
-### Hoja: `professionals`
-```
-id | slug | name | specialty | centerName | centerId | email | phone |
-calendarId | publicDescription | appointmentDurationDefault | timezone |
-professionalType | photoUrl | active | createdAt | updatedAt
-```
-
-### Hoja: `appointments`
+### appointments (columnas A:Q)
 ```
 id | professionalId | professionalSlug | patientName | patientEmail |
 patientPhone | patientRut | reason | date | startTime | endTime |
-timezone | status | googleCalendarEventId | createdAt
+timezone | status | googleCalendarEventId | createdAt | updatedAt
 ```
-Status posibles: `confirmada`, `completada`, `cancelada`, `no_asiste`
 
-### Hoja: `availability`
-```
-id | professionalId | dayOfWeek | startTime | endTime | slotDuration | active | createdAt
-```
-dayOfWeek: `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, `sunday`
+Estados de status: confirmada | cancelada | completada | no_asiste | reagendada
 
-### Hoja: `users`
+### availability (columnas A:I)
 ```
-id | email | name | role | centerId | passwordHash | active | createdAt | updatedAt
+id | professionalId | dayOfWeek | startTime | endTime | slotDuration | active | createdAt | updatedAt
 ```
-role: `admin`, `user`
+dayOfWeek puede ser monday|tuesday|...sunday o una fecha especifica YYYY-MM-DD.
 
-### Hoja: `centers`
+### centers (columnas A:M)
 ```
-id | name | slug | description | logoUrl | active | createdAt | updatedAt
+id | name | slug | description | logoUrl | address | city | region | phone | email | active | createdAt | updatedAt
+```
+
+### users (columnas A:I)
+```
+id | email | name | passwordHash | role | centerId | active | createdAt | updatedAt
+```
+passwordHash formato: pbkdf2$salt:hash (100k iteraciones SHA-512)
+
+### remindersSent (columnas A:D)
+```
+id | appointmentId | type | sentAt
+```
+type: 24h o 2h. Evita enviar el mismo recordatorio dos veces.
+
+---
+
+## Autenticacion: dos sistemas paralelos
+
+### Sistema 1: Supabase Auth (profesionales)
+- Login via email+password en Supabase
+- createClient() en el servidor devuelve el usuario
+- supabase.auth.updateUser({ password }) para cambiar clave
+- Callback OAuth en /auth/callback
+
+### Sistema 2: HMAC local (admin y usuarios de centro)
+- Cookie HTTP-only agendasalud_admin_session
+- JWT casero firmado con HMAC-SHA256
+- Payload: { email, role, name, centerId, iat, exp }
+- TTL: 8 horas
+- Usuarios almacenados en hoja users de Google Sheets con PBKDF2
+- getLocalAdminSession() lee y verifica la cookie
+- setLocalUserSession() emite la cookie
+
+### Como funciona getCurrentUserRole()
+1. Primero intenta leer la sesion HMAC local
+2. Si no hay sesion local, lee la sesion de Supabase
+3. Devuelve { user, role: 'admin'|'user'|'anonymous', isAdmin }
+
+### Flujo de login
+- POST /api/admin/login: valida contra users en Sheets o contra admin bootstrap
+- Si el correo esta en ADMIN_EMAILS o el rol en metadata de Supabase es 'admin' -> isAdmin = true
+- Los profesionales logueados via Supabase NO aparecen en la hoja users
+
+---
+
+## Flujo de reserva (anti doble-booking)
+
+```
+Paciente llena formulario
+  -> POST /api/public/appointments
+  -> bookAppointment()
+    -> acquireLock(professionalId, date, startTime)  <- mutex en memoria
+    -> isSlotTaken() en Google Sheets                <- verificacion post-lock
+    -> createCalendarEvent()                         <- Google Calendar (no bloquea si falla)
+    -> createAppointment()                           <- Google Sheets
+    -> sendBookingConfirmation()                     <- email al paciente (no bloquea)
+    -> sendProfessionalNotification()                <- email al profesional (no bloquea)
+    -> releaseLock()
+  -> retorna { success: true, appointmentId }
+```
+
+Nota sobre el lock: es in-memory en el proceso Node. En Vercel con multiples instancias, la segunda verificacion con isSlotTaken() en Sheets es la que realmente previene el doble booking entre instancias.
+
+---
+
+## Flujo de cancelacion
+
+### Desde link del correo (paciente)
+```
+/cancelar/[id]
+  -> CancelAppointmentPage carga GET /api/public/appointments/[id]
+  -> Paciente ingresa su email y confirma
+  -> POST /api/public/appointments/[id]/cancel { email }
+    -> Verifica email == appointment.patientEmail
+    -> updateAppointmentStatus(id, 'cancelada')
+    -> cancelCalendarEvent()
+    -> sendCancellationEmail() al paciente
+```
+
+### Desde el dashboard (profesional/admin)
+```
+PATCH /api/dashboard/appointments/[id] { status: 'cancelada' }
+  -> requireAppointmentAccess(id)
+  -> updateAppointmentStatus(id, 'cancelada')
+  -> cancelCalendarEvent()
+  -> sendCancellationEmail() al paciente
 ```
 
 ---
 
-## 7. Flujo de booking (como funciona hoy)
+## Sistema de recordatorios
 
-```
-POST /api/public/appointments
-  → AppointmentSchema.safeParse(body)          [Zod — validacion de entrada]
-  → getProfessionalBySlug(slug)                [Sheets — busca profesional]
-  → acquireLock(professionalId, date, time)    [Mutex — previene doble-booking]
-  → isSlotTaken(professionalId, date, time)    [Sheets — verifica post-lock]
-  → createCalendarEvent(...)                   [Calendar — opcional, no bloquea]
-  → createAppointment(...)                     [Sheets — registro definitivo]
-  → releaseLock(...)                           [Mutex — libera lock]
-  → sendBookingConfirmation(...)               [Email — async, no bloquea respuesta]
-  → 201 { appointmentId, calendarEventId }
-```
+- Cron en vercel.json: GET /api/cron/reminders cada hora
+- sendPendingReminders() en lib/reminders.ts:
+  - Lee citas de hoy y manana desde Sheets
+  - Filtra por ventana 24h (20-30 horas antes) y 2h (90-180 min antes)
+  - Chequea remindersSent para no re-enviar
+  - Llama sendReminderEmail() y logReminderSent()
+- Seguridad: si CRON_SECRET esta definido, valida Authorization: Bearer <secret>
 
 ---
 
-## 8. Comandos utiles
+## Variables de entorno
 
 ```bash
-# Desarrollo
-npm run dev
+# Google API (obligatorio)
+GOOGLE_CLIENT_EMAIL=        # service account email
+GOOGLE_PRIVATE_KEY=         # clave privada con \n como saltos de linea
+GOOGLE_PROJECT_ID=          # id del proyecto GCP
+GOOGLE_SHEETS_ID=           # ID del Google Sheets
+GOOGLE_CALENDAR_ID=         # Calendar ID de fallback global
 
-# Build (ejecutar antes de cada deploy)
-npm run build
+# Supabase (obligatorio para login de profesionales)
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=  # para crear usuarios desde admin
 
-# Linting
-npm run lint
+# Admin
+ADMIN_EMAILS=               # lista separada por comas: admin@x.cl,otro@x.cl
+ADMIN_SESSION_SECRET=       # secret para firmar cookies HMAC (cambiar en prod)
+DEFAULT_CENTER_ID=          # ID del centro por defecto para usuarios nuevos
 
-# Variables de entorno: copiar y completar
-cp .env.example .env.local
+# Email
+RESEND_API_KEY=             # API key de Resend.com
+EMAIL_FROM=                 # "AgendaSalud <noreply@tudominio.cl>"
+
+# App
+NEXT_PUBLIC_APP_URL=        # URL publica: https://agendasalud.vercel.app
+
+# Cron security
+CRON_SECRET=                # secret para el endpoint /api/cron/reminders
 ```
 
 ---
 
-## 9. Decisiones de diseno importantes
+## Reglas criticas de desarrollo
 
-- **Google Sheets como DB:** Deliberado para el MVP. No escala a miles de usuarios concurrentes. Para produccion real considerar migrar a Supabase/PostgreSQL con el mismo schema.
-- **Mutex en memoria:** Suficiente para deploy single-instance. Reemplazar con Redis para multi-instancia (ver P0 arriba).
-- **Sin migraciones:** El schema de Sheets se gestiona manualmente. Agregar columnas nuevas requiere actualizar las funciones de lectura/escritura en `lib/google/sheets.ts`.
-- **Zona horaria:** Toda la logica asume `America/Santiago`. `lib/date.ts` tiene las utilidades de conversion. No usar `new Date()` directamente para calculos de disponibilidad.
-- **Auth dual:** Supabase para profesionales/usuarios normales + sistema HMAC propio para el admin inicial. El sistema HMAC existe porque Supabase requiere `SUPABASE_SERVICE_ROLE_KEY` para crear usuarios, que puede no estar disponible en todos los ambientes.
+1. NO emojis en codigo: hubo problemas de encoding anteriores.
+2. NO exponer credenciales Google en frontend: toda integracion en lib/google/* y rutas API server-side.
+3. La hora SIEMPRE es chilena: usar TIMEZONE = 'America/Santiago' y las utilidades de lib/date.ts. Nunca new Date() crudo para calcular disponibilidad.
+4. NO datos clinicos sensibles del paciente: solo nombre, email, telefono y RUT (opcional).
+5. NO pedir confirmacion de Supabase para usuarios HMAC: los usuarios en la hoja users no tienen sesion de Supabase.
+6. Verificar SIEMPRE con build: npm.cmd run build antes de dar trabajo por terminado.
+7. Sin hardcodear secrets: siempre variables de entorno.
+8. Validar en el backend: los schemas Zod estan en lib/validation.ts y se usan en las rutas API.
+9. La informacion publica visible para clientes/pacientes solo puede editarla el Administrador. El Profesional no puede editar foto, descripcion, especialidad publica, correo publico, telefono publico, Calendar ID ni duracion base del perfil.
+10. PATCH /api/dashboard/professionals exige requireAdmin(); no basta con tener acceso profesional al centro.
 
 ---
 
-*Generado por Claude Code — AgendaSalud handoff, Junio 2026*
+## Credenciales admin iniciales (cambiar en produccion)
+
+- Email: admin@agendasalud.cl
+- Password: admin
+- El login llama a /api/admin/bootstrap que crea el usuario si no existe
+
+---
+
+## Como ejecutar localmente
+
+```bash
+npm install
+# Copiar .env.example a .env.local y completar variables
+npm run dev        # http://localhost:3000
+npm run build      # verificar que compila sin errores
+```
+
+---
+
+## Convenciones de codigo
+
+- Funciones utilitarias: camelCase en lib/
+- Componentes: PascalCase en components/
+- Rutas API: Next.js App Router route handlers (route.ts)
+- Sin comentarios innecesarios: el codigo debe ser autoexplicativo
+- Sin console.log en produccion: solo console.warn y console.error para errores reales
+- Imports absolutos: usar @/lib/..., @/components/...
+- No mutar objetos: siempre spread operator para updates
+- Funciones menores de 50 lineas, archivos menores de 800 lineas
+
+---
+
+## Estado actual (2026-06-14)
+
+### Funciona en produccion
+- Landing page con Hero, HowItWorks, RoleBenefits, Features, Security, CTA
+- Directorio de profesionales /agendar
+- Funnel de agendamiento publico /agendar/[slug] con dots de disponibilidad batch
+- Reserva de citas con anti doble-booking (mutex + Sheets)
+- Creacion de evento en Google Calendar al reservar
+- Email de confirmacion al paciente (Resend)
+- Email de notificacion al profesional al reservar
+- Cron de recordatorios 24h y 2h (Vercel, cada hora)
+- Pagina de cancelacion publica /cancelar/[id] con verificacion por email
+- Eliminacion de evento Calendar al cancelar
+- Email de cancelacion al paciente
+- Busqueda de citas por email /mis-citas (sin registro)
+- Dashboard profesional (agenda, citas, disponibilidad, nueva cita)
+- Panel admin (centros, profesionales, usuarios)
+- Login dual: Supabase + HMAC local
+- Cambio de clave directo desde dashboard (modo directo + recovery por email)
+- Admin puede crear usuarios con nombre y clave temporal
+- Resolucion correcta del nombre de usuario en Supabase (5 campos de metadatos)
+- Estado reagendada en el schema de Appointment
+
+### Pendiente (proximos sprints)
+
+- Split de ClientWorkspace.tsx: monolito de mas de 800 lineas. Extraer: AgendaTab, CitasTab, DisponibilidadTab, NuevaCitaTab, ConfiguracionTab
+- Split de AdminWorkspace.tsx: mismo problema
+- Email al profesional cuando se cancela su cita desde cualquier origen
+- Reagendamiento real: cambiar fecha/hora de una cita existente (hoy existe el estado pero no hay UI ni logica)
+- Ficha basica de paciente: historial acumulado por email con anotaciones administrativas
+- Modulo de finanzas basico: precio por servicio, estado de pago, reporte simple
+- PWA: manifest.json y service worker para instalacion movil
+- Navegacion movil mejorada: barra inferior para pacientes en mobile
+- Metricas en admin: graficos de ocupacion, inasistencias, profesionales mas activos
+- Exportar datos: CSV de citas desde admin
+- Google Calendar OAuth por profesional: actualmente usa service account global. Para escalar cada profesional deberia conectar su propio Calendar via OAuth 2.0
+- Rate limiting en endpoints publicos de reserva y busqueda por email
+- CRM basico: pacientes frecuentes, etiquetas, notas, control recordatorio
+
+---
+
+## Commits recientes
+
+```
+e864016  feat: cancelacion de citas, notificaciones completas y pagina mis-citas
+774ffc3  feat: corregir nombres de usuarios y permitir cambio de clave desde dashboard
+1ef3567  feat: landing page, availability dots, reminder cron y email templates
+8000de8  fix: aclarar acceso email y usuario nuevo
+f8d63fb  fix: hacer clickeables acciones admin
+```
