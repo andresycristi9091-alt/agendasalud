@@ -8,6 +8,7 @@ import {
 } from './google/sheets'
 import { TIMEZONE, chileLocalDateTimeToISO } from './date'
 import { acquireLock, releaseLock, bookingLockKey } from './mutex'
+import { sendProfessionalNotification } from './email'
 import type { AppointmentInput } from './validation'
 import type { Professional } from './google/sheets'
 
@@ -136,6 +137,23 @@ async function bookWithLock(
     status:                'confirmada',
     googleCalendarEventId: calendarEventId,
   })
+
+  // 5. Notificar al profesional (no bloqueante)
+  if (professional.email) {
+    sendProfessionalNotification({
+      professionalName: professional.name,
+      professionalEmail: professional.email,
+      patientName: input.patientName,
+      patientEmail: input.patientEmail,
+      patientPhone: input.patientPhone,
+      specialty: professional.specialty,
+      centerName: professional.centerName,
+      date: input.date,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      appointmentId: id,
+    }).catch((err) => console.warn('[appointments] Error notificando profesional:', err))
+  }
 
   return { success: true, appointmentId: id, calendarEventId }
 }

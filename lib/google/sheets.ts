@@ -80,6 +80,8 @@ export type Availability = {
   updatedAt:    string
 }
 
+export type AppointmentStatus = 'confirmada' | 'cancelada' | 'completada' | 'no_asiste' | 'reagendada'
+
 export type Appointment = {
   id:                   string
   professionalId:       string
@@ -93,7 +95,7 @@ export type Appointment = {
   startTime:            string
   endTime:              string
   timezone:             string
-  status:               'confirmada' | 'cancelada' | 'completada' | 'no_asiste'
+  status:               AppointmentStatus
   googleCalendarEventId: string
   createdAt:            string
   updatedAt:            string
@@ -586,5 +588,20 @@ export async function logReminderSent(appointmentId: string, type: '24h' | '2h')
   const id = `${type}-${appointmentId}`
   const now = new Date().toISOString()
   await appendRow('remindersSent!A:D', [id, appointmentId, type, now])
+}
+
+export async function getAppointmentsByPatientEmail(email: string): Promise<Appointment[]> {
+  const rows = await getSheetData('appointments!A:Q')
+  if (rows.length < 2) return []
+  const headers = rows[0]
+  const normalizedEmail = email.trim().toLowerCase()
+  return rows.slice(1)
+    .filter((r) => (r[4] ?? '').trim().toLowerCase() === normalizedEmail)
+    .map((r) => rowToObject<Appointment>(headers, r))
+    .sort((a, b) => {
+      const da = `${a.date}T${a.startTime}`
+      const db = `${b.date}T${b.startTime}`
+      return db.localeCompare(da)
+    })
 }
 

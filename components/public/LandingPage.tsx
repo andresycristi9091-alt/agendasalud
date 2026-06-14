@@ -8,6 +8,7 @@ export function LandingPage() {
       <Nav />
       <Hero />
       <HowItWorks />
+      <RoleBenefits />
       <Features />
       <SecuritySection />
       <CTA />
@@ -26,12 +27,18 @@ function Nav() {
             Agenda<span className="text-teal-500">Salud</span>
           </span>
         </div>
-        <nav className="flex items-center gap-3">
+        <nav className="flex items-center gap-2">
+          <Link
+            href="/mis-citas"
+            className="hidden rounded-xl px-3 py-2 text-sm font-bold text-slate-500 transition hover:bg-slate-50 sm:block"
+          >
+            Mis citas
+          </Link>
           <Link
             href="/agendar"
-            className="hidden rounded-xl px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50 sm:block"
+            className="hidden rounded-xl px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50 sm:block"
           >
-            Ver profesionales
+            Profesionales
           </Link>
           <Link
             href="/login"
@@ -199,6 +206,123 @@ function Features() {
   )
 }
 
+function RoleBenefits() {
+  return (
+    <section className="bg-slate-50 px-4 py-20 sm:px-6">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-12 text-center">
+          <p className="mb-3 text-sm font-bold uppercase tracking-widest text-teal-600">Para todos</p>
+          <h2 className="text-3xl font-black tracking-tight sm:text-4xl">Disenado para cada rol</h2>
+          <p className="mx-auto mt-4 max-w-xl text-slate-500">
+            Una sola plataforma que resuelve las necesidades de pacientes, profesionales y centros de salud.
+          </p>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <RoleCard
+            badge="Paciente"
+            badgeColor="bg-blue-100 text-blue-700"
+            title="Agenda sin llamadas"
+            description="Reserva tu hora en minutos, desde cualquier dispositivo y a cualquier hora del dia."
+            items={[
+              'Disponibilidad en tiempo real',
+              'Confirmacion inmediata por correo',
+              'Recordatorio 24 horas antes',
+              'Consulta tus citas en /mis-citas',
+              'Cancela con un clic desde el correo',
+            ]}
+            cta={{ label: 'Buscar profesional', href: '/agendar' }}
+            accent="blue"
+          />
+          <RoleCard
+            badge="Profesional"
+            badgeColor="bg-teal-100 text-teal-700"
+            title="Tu agenda bajo control"
+            description="Gestiona tu calendario, recibe notificaciones y mantén Google Calendar sincronizado automaticamente."
+            items={[
+              'Notificacion por correo de cada cita nueva',
+              'Agenda diaria y semanal en un panel claro',
+              'Sincronizacion con Google Calendar',
+              'Configura tus horarios y duracion de citas',
+              'Registra citas manuales para pacientes sin internet',
+            ]}
+            cta={{ label: 'Acceso profesional', href: '/login' }}
+            accent="teal"
+          />
+          <RoleCard
+            badge="Administrador"
+            badgeColor="bg-violet-100 text-violet-700"
+            title="Control total del centro"
+            description="Gestiona profesionales, centros, usuarios y todas las citas desde un panel unificado."
+            items={[
+              'Crear y administrar profesionales',
+              'Asignar usuarios a centros',
+              'Ver todas las citas y estados',
+              'Cambiar estado de cualquier cita',
+              'Metricas de ocupacion y asistencia',
+            ]}
+            cta={{ label: 'Panel administrativo', href: '/login' }}
+            accent="violet"
+          />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+type RoleCardProps = {
+  badge: string
+  badgeColor: string
+  title: string
+  description: string
+  items: string[]
+  cta: { label: string; href: string }
+  accent: 'blue' | 'teal' | 'violet'
+}
+
+const accentBorder: Record<RoleCardProps['accent'], string> = {
+  blue:   'border-blue-200 hover:border-blue-400',
+  teal:   'border-teal-200 hover:border-teal-400',
+  violet: 'border-violet-200 hover:border-violet-400',
+}
+
+const accentButton: Record<RoleCardProps['accent'], string> = {
+  blue:   'bg-blue-600 hover:bg-blue-700',
+  teal:   'bg-teal-600 hover:bg-teal-700',
+  violet: 'bg-violet-600 hover:bg-violet-700',
+}
+
+const accentCheck: Record<RoleCardProps['accent'], string> = {
+  blue:   'text-blue-600',
+  teal:   'text-teal-600',
+  violet: 'text-violet-600',
+}
+
+function RoleCard({ badge, badgeColor, title, description, items, cta, accent }: RoleCardProps) {
+  return (
+    <div className={`flex flex-col rounded-3xl border bg-white p-7 shadow-sm transition ${accentBorder[accent]}`}>
+      <span className={`mb-4 inline-block rounded-full px-3 py-1 text-xs font-black ${badgeColor}`}>{badge}</span>
+      <h3 className="mb-2 text-xl font-black tracking-tight">{title}</h3>
+      <p className="mb-6 text-sm leading-6 text-slate-500">{description}</p>
+      <ul className="mb-8 space-y-2.5 flex-1">
+        {items.map((item) => (
+          <li key={item} className="flex items-start gap-2.5">
+            <svg className={`mt-0.5 h-4 w-4 shrink-0 ${accentCheck[accent]}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="text-sm text-slate-600">{item}</span>
+          </li>
+        ))}
+      </ul>
+      <Link
+        href={cta.href}
+        className={`block rounded-2xl py-3 text-center text-sm font-black text-white transition ${accentButton[accent]}`}
+      >
+        {cta.label}
+      </Link>
+    </div>
+  )
+}
+
 function SecuritySection() {
   return (
     <section className="bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_100%)] px-4 py-20 sm:px-6">
@@ -324,12 +448,12 @@ function Footer() {
           <span className="font-bold text-slate-600">AgendaSalud</span>
           <span>&middot; Hecho en Chile</span>
         </div>
-        <p>
-          Cumplimiento Ley 19.628 &middot; Datos protegidos &middot;{' '}
-          <Link href="/login" className="font-bold text-blue-600 hover:underline">
-            Acceso profesionales
-          </Link>
-        </p>
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-center">
+          <span>Cumplimiento Ley 19.628 &middot; Datos protegidos</span>
+          <Link href="/mis-citas" className="font-bold text-blue-600 hover:underline">Mis citas</Link>
+          <Link href="/agendar" className="font-bold text-blue-600 hover:underline">Profesionales</Link>
+          <Link href="/login" className="font-bold text-blue-600 hover:underline">Acceso profesionales</Link>
+        </div>
       </div>
     </footer>
   )

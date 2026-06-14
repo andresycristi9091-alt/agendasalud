@@ -35,7 +35,7 @@ export const AvailabilitySchema = z.object({
 })
 
 export const UpdateStatusSchema = z.object({
-  status: z.enum(['confirmada','cancelada','completada','no_asiste']),
+  status: z.enum(['confirmada','cancelada','completada','no_asiste','reagendada']),
 })
 
 export const AdminProfessionalSchema = z.object({
