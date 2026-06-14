@@ -538,7 +538,7 @@ export function AdminWorkspace() {
                       <p className="text-xs text-slate-400">{centers.find((center) => center.id === professional.centerId)?.name ?? 'Sin centro'}</p>
                     </div>
                   </div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
                     <a
                       href="#admin-professional-form"
                       onClick={() => editProfessional(professional.id)}
@@ -552,10 +552,13 @@ export function AdminWorkspace() {
                     ) : (
                       <button type="button" onClick={() => reactivateProfessional(professional.id)} className="rounded-xl border border-emerald-200 bg-white px-3 py-3 text-xs font-black text-emerald-700 transition hover:bg-emerald-50">Reactivar</button>
                     )}
+                  </div>
+
+                  <div className="mt-3 border-t border-red-100 pt-3">
                     <button
                       type="button"
                       onClick={() => deleteProfessional(professional.id)}
-                      className={`rounded-xl border px-3 py-3 text-xs font-black transition ${
+                      className={`w-full rounded-xl border px-3 py-3 text-xs font-black transition ${
                         pendingDeleteProfessionalId === professional.id
                           ? 'border-red-500 bg-red-600 text-white hover:bg-red-700'
                           : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
