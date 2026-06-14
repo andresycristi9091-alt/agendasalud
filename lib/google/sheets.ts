@@ -176,6 +176,15 @@ async function appendRow(range: string, values: string[]): Promise<void> {
 
 
 // â”€â”€ Professionals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export async function getProfessionalById(id: string): Promise<Professional | null> {
+  const rows = await getSheetData('professionals!A:Q')
+  if (rows.length < 2) return null
+  const headers = rows[0]
+  const found   = rows.slice(1).find((r) => r[0] === id)
+  if (!found) return null
+  return rowToProfessional(found, headers)
+}
+
 export async function getProfessionalBySlug(slug: string): Promise<Professional | null> {
   const rows = await getSheetData('professionals!A:Q')
   if (rows.length < 2) return null
@@ -552,5 +561,30 @@ export async function isSlotTaken(
 ): Promise<boolean> {
   const existing = await getAppointmentsByDateAndProfessional(professionalId, date)
   return existing.some((a) => a.startTime === startTime)
+}
+
+export async function getAppointmentsByDate(date: string): Promise<Appointment[]> {
+  const rows = await getSheetData('appointments!A:Q')
+  if (rows.length < 2) return []
+  const headers = rows[0]
+  return rows.slice(1)
+    .filter((r) => r[8] === date && r[12] !== 'cancelada')
+    .map((r) => rowToObject<Appointment>(headers, r))
+}
+
+export async function getRemindersSent(): Promise<Array<{ appointmentId: string; type: string }>> {
+  try {
+    const rows = await getSheetData('remindersSent!A:D')
+    if (rows.length < 2) return []
+    return rows.slice(1).map((r) => ({ appointmentId: r[1] ?? '', type: r[2] ?? '' }))
+  } catch {
+    return []
+  }
+}
+
+export async function logReminderSent(appointmentId: string, type: '24h' | '2h'): Promise<void> {
+  const id = `${type}-${appointmentId}`
+  const now = new Date().toISOString()
+  await appendRow('remindersSent!A:D', [id, appointmentId, type, now])
 }
 

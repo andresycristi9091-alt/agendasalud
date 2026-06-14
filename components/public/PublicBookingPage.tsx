@@ -113,6 +113,28 @@ export function PublicBookingPage({ slug }: { slug: string }) {
   const [dateRange, setDateRange] = useState(21)
   const days = useMemo(() => getDaysToShow(dateRange), [dateRange])
   const availableSlots = slots.filter((slot) => slot.available)
+
+  const [batchAvailability, setBatchAvailability] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    if (!professional) return
+    let cancelled = false
+    const today = getTodayISO()
+    const toDate = (() => {
+      const d = parseISODate(today)
+      d.setDate(d.getDate() + 29)
+      return d.toISOString().split('T')[0]
+    })()
+
+    fetch(`/api/public/availability/batch/${slug}?from=${today}&to=${toDate}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && data?.availability) setBatchAvailability(data.availability)
+      })
+      .catch(() => {})
+
+    return () => { cancelled = true }
+  }, [professional, slug])
   const groupedSlots = groupSlots(availableSlots)
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -199,6 +221,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
                 <DateStep
                   days={days}
                   selectedDate={selectedDate}
+                  availability={batchAvailability}
                   canLoadMore={dateRange < 60}
                   onLoadMore={() => setDateRange((r) => Math.min(r + 21, 60))}
                   onSelect={(date) => {
@@ -343,12 +366,14 @@ function Progress({ step }: { step: Step }) {
 function DateStep({
   days,
   selectedDate,
+  availability,
   canLoadMore,
   onLoadMore,
   onSelect,
 }: {
   days: string[]
   selectedDate: string
+  availability: Record<string, boolean>
   canLoadMore: boolean
   onLoadMore: () => void
   onSelect: (date: string) => void
@@ -359,7 +384,7 @@ function DateStep({
         <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Paso 1</p>
         <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Selecciona una fecha</h2>
         <p className="mt-2 text-sm leading-6 text-slate-500">
-          Te mostraremos solo horarios reales disponibles para agendar.
+          Los dias con punto verde tienen horarios disponibles.
         </p>
       </div>
 
@@ -367,13 +392,15 @@ function DateStep({
         {days.map((date) => {
           const parsed = parseISODate(date)
           const selected = date === selectedDate
+          const hasSlots = availability[date]
+          const known = date in availability
           return (
             <button
               key={date}
               type="button"
               onClick={() => onSelect(date)}
               aria-pressed={selected}
-              aria-label={`Seleccionar ${formatReadableDate(date)}`}
+              aria-label={`${formatReadableDate(date)}${hasSlots ? ', horarios disponibles' : ''}`}
               className={[
                 'rounded-2xl border p-3 text-center transition focus:outline-none focus:ring-4 focus:ring-blue-500/15',
                 selected
@@ -384,6 +411,14 @@ function DateStep({
               <p className="text-xs font-bold opacity-70">{WEEKDAYS[parsed.getDay()]}</p>
               <p className="mt-1 text-2xl font-black">{parsed.getDate()}</p>
               <p className="text-xs font-bold opacity-70">{MONTHS[parsed.getMonth()]}</p>
+              <div className="mt-1 flex justify-center">
+                {known && hasSlots && (
+                  <span className={`h-1.5 w-1.5 rounded-full ${selected ? 'bg-white' : 'bg-emerald-500'}`} aria-hidden="true" />
+                )}
+                {known && !hasSlots && (
+                  <span className={`h-1.5 w-1.5 rounded-full ${selected ? 'bg-white/40' : 'bg-slate-300'}`} aria-hidden="true" />
+                )}
+              </div>
             </button>
           )
         })}

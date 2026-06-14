@@ -94,6 +94,95 @@ function buildConfirmationHtml(params: BookingEmailParams): string {
 </html>`
 }
 
+type ReminderEmailParams = {
+  patientName: string
+  patientEmail: string
+  professionalName: string
+  centerName: string
+  date: string
+  startTime: string
+  type: '24h' | '2h'
+}
+
+function buildReminderHtml(params: ReminderEmailParams): string {
+  const dateFormatted = formatChileDate(params.date)
+  const label = params.type === '24h' ? 'manana' : 'en 2 horas'
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8FAFC;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(15,23,42,.08);">
+        <tr><td style="background:linear-gradient(135deg,#0891B2,#10B981);padding:28px;text-align:center;">
+          <p style="margin:0;color:rgba(255,255,255,.7);font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;">Recordatorio AgendaSalud</p>
+          <h1 style="margin:10px 0 0;color:#fff;font-size:24px;font-weight:900;">Tienes una cita ${label}</h1>
+        </td></tr>
+        <tr><td style="padding:28px;">
+          <p style="margin:0 0 8px;color:#64748b;font-size:14px;">Hola <strong style="color:#0f172a;">${params.patientName}</strong>,</p>
+          <p style="margin:0 0 24px;color:#64748b;font-size:14px;line-height:1.6;">Te recordamos que tienes una cita medica programada:</p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0FDFA;border-radius:12px;margin-bottom:24px;">
+            <tr><td style="padding:20px;">
+              <p style="margin:0 0 6px;color:#0f172a;font-weight:900;font-size:17px;">${params.professionalName}</p>
+              <p style="margin:0 0 4px;color:#0f172a;font-weight:700;">${dateFormatted}</p>
+              <p style="margin:0;color:#0f172a;font-size:20px;font-weight:900;">${params.startTime} hrs</p>
+              <p style="margin:4px 0 0;color:#475569;font-size:13px;">${params.centerName}</p>
+            </td></tr>
+          </table>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#fef9c3;border-radius:12px;margin-bottom:24px;">
+            <tr><td style="padding:16px;">
+              <p style="margin:0;color:#713f12;font-size:13px;line-height:1.6;">
+                Recuerda presentarte 5 minutos antes. Si no puedes asistir, avisa con anticipacion para liberar el horario.
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:20px 32px;border-top:1px solid #f1f5f9;text-align:center;">
+          <p style="margin:0;color:#94a3b8;font-size:12px;">AgendaSalud &middot; Tus datos se usan solo para gestionar esta cita.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+}
+
+export async function sendReminderEmail(params: ReminderEmailParams): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    console.warn('[email] RESEND_API_KEY no configurado. Recordatorio no enviado a', params.patientEmail)
+    return
+  }
+
+  const from = process.env.EMAIL_FROM ?? 'AgendaSalud <noreply@agendasalud.cl>'
+  const label = params.type === '24h' ? 'manana' : 'en 2 horas'
+  const subject = `Recordatorio: Cita ${label} con ${params.professionalName}`
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from,
+        to: [params.patientEmail],
+        subject,
+        html: buildReminderHtml(params),
+      }),
+    })
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '')
+      console.error('[email] Error enviando recordatorio:', response.status, detail)
+    }
+  } catch (error) {
+    console.error('[email] Error de red al enviar recordatorio:', error)
+  }
+}
+
 export async function sendBookingConfirmation(params: BookingEmailParams): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
