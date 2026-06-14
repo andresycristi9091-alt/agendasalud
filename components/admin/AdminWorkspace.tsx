@@ -262,6 +262,24 @@ export function AdminWorkspace() {
     setMessage('Profesional desactivado. Ya no aparecera en el agendamiento publico.')
   }
 
+  async function deleteProfessional(id: string) {
+    const professional = professionals.find((item) => item.id === id)
+    if (!window.confirm(`Eliminar definitivamente a ${professional?.name ?? 'este profesional'}? Esta accion no se puede deshacer.`)) return
+
+    const response = await fetch(`/api/admin/professionals/${id}?hard=true`, { method: 'DELETE' })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      setMessage(data.error ?? 'No pudimos eliminar el profesional.')
+      return
+    }
+    setProfessionals(data.professionals ?? [])
+    if (selectedProfessionalId === id) {
+      setSelectedProfessionalId('')
+      setProfessionalForm(emptyProfessional)
+    }
+    setMessage('Profesional eliminado definitivamente.')
+  }
+
   async function reactivateProfessional(id: string) {
     const response = await fetch(`/api/admin/professionals/${id}`, {
       method: 'PATCH',
@@ -436,6 +454,9 @@ export function AdminWorkspace() {
                 <option value={45}>45 minutos</option>
                 <option value={60}>1 hora</option>
               </select>
+              <select value={professionalForm.timezone} onChange={(e) => updateProfessionalForm('timezone', e.target.value)} className={inputClass}>
+                <option value="America/Santiago">America/Santiago</option>
+              </select>
               <textarea value={professionalForm.publicDescription} onChange={(e) => updateProfessionalForm('publicDescription', e.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="Descripcion publica" />
               <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700">
                 <input
@@ -450,9 +471,14 @@ export function AdminWorkspace() {
                 {selectedProfessionalId ? 'Guardar profesional' : 'Crear profesional'}
               </button>
               {selectedProfessionalId && (
-                <button type="button" onClick={clearProfessionalEdit} className="h-12 w-full rounded-2xl border border-slate-200 bg-white text-sm font-black text-slate-700 transition hover:bg-slate-50">
-                  Cancelar edicion
-                </button>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button type="button" onClick={clearProfessionalEdit} className="h-12 rounded-2xl border border-slate-200 bg-white text-sm font-black text-slate-700 transition hover:bg-slate-50">
+                    Cancelar edicion
+                  </button>
+                  <button type="button" onClick={() => deleteProfessional(selectedProfessionalId)} className="h-12 rounded-2xl border border-red-200 bg-red-50 text-sm font-black text-red-600 transition hover:bg-red-100">
+                    Eliminar definitivo
+                  </button>
+                </div>
               )}
             </form>
           </Panel>
@@ -491,7 +517,7 @@ export function AdminWorkspace() {
                       <p className="text-xs text-slate-400">{centers.find((center) => center.id === professional.centerId)?.name ?? 'Sin centro'}</p>
                     </div>
                   </div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <div className="mt-3 grid gap-2 sm:grid-cols-4">
                     <a
                       href="#admin-professional-form"
                       onClick={() => editProfessional(professional.id)}
@@ -505,6 +531,7 @@ export function AdminWorkspace() {
                     ) : (
                       <button type="button" onClick={() => reactivateProfessional(professional.id)} className="rounded-xl border border-emerald-200 bg-white px-3 py-3 text-xs font-black text-emerald-700 transition hover:bg-emerald-50">Reactivar</button>
                     )}
+                    <button type="button" onClick={() => deleteProfessional(professional.id)} className="rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-xs font-black text-red-600 transition hover:bg-red-100">Eliminar</button>
                   </div>
                 </div>
               ))}

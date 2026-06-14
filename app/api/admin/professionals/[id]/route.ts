@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth/admin'
 import { AdminProfessionalSchema } from '@/lib/validation'
 import {
   deactivateProfessional,
+  deleteProfessional,
   getAllProfessionalsForAdmin,
   updateProfessional,
 } from '@/lib/google/sheets'
@@ -30,16 +31,21 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAdmin()
     const { id } = await params
-    await deactivateProfessional(id)
+    const hardDelete = new URL(req.url).searchParams.get('hard') === 'true'
+    if (hardDelete) {
+      await deleteProfessional(id)
+    } else {
+      await deactivateProfessional(id)
+    }
     const professionals = await getAllProfessionalsForAdmin()
     return NextResponse.json({ professionals })
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'No pudimos desactivar' }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'No pudimos actualizar profesional' }, { status: 500 })
   }
 }

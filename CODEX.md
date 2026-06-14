@@ -404,6 +404,7 @@ npm run build      # verificar que compila sin errores
 - Admin puede crear usuarios con nombre y clave temporal
 - Admin puede editar usuarios completos: nombre, email, clave, rol, centro y estado activo
 - Admin puede desactivar/reactivar usuarios o eliminarlos definitivamente
+- Admin puede editar todos los datos de profesionales, desactivar/reactivar o eliminarlos definitivamente
 - Resolucion correcta del nombre de usuario en Supabase (5 campos de metadatos)
 - Estado reagendada en el schema de Appointment
 

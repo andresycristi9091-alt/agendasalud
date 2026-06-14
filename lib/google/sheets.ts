@@ -283,6 +283,33 @@ export async function deactivateProfessional(id: string): Promise<void> {
   await updateProfessional(id, { active: false })
 }
 
+export async function deleteProfessional(id: string): Promise<void> {
+  const rows = await getSheetData('professionals!A:Q')
+  const rowIndex = rows.findIndex((row, index) => index > 0 && row[0] === id)
+  if (rowIndex === -1) throw new Error('Profesional no encontrado')
+
+  const metadata = await getSheetsClient().spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const sheet = metadata.data.sheets?.find((item) => item.properties?.title === 'professionals')
+  const sheetId = sheet?.properties?.sheetId
+  if (sheetId === undefined) throw new Error('Hoja professionals no encontrada')
+
+  await getSheetsClient().spreadsheets.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: {
+            sheetId,
+            dimension: 'ROWS',
+            startIndex: rowIndex,
+            endIndex: rowIndex + 1,
+          },
+        },
+      }],
+    },
+  })
+}
+
 function rowToCenter(headers: string[], row: string[]): HealthCenter {
   const mapped = rowToObject<Partial<HealthCenter>>(headers, row)
   return {

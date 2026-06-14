@@ -71,9 +71,11 @@ Ultimo foco implementado:
   - `PATCH /api/dashboard/professionals` ahora exige `requireAdmin()`; no basta con tener acceso profesional al centro.
 - Admin / profesionales publicados:
   - El boton `Editar` es un enlace con ancla a `#admin-professional-form`, carga el profesional en el formulario Admin y desplaza la vista al formulario.
-  - El formulario Admin permite marcar el profesional como activo/inactivo.
+  - El formulario Admin permite editar todos los datos del profesional: centro, nombre, slug, tipo, especialidad, foto, correo, telefono, Calendar ID, duracion, zona horaria, descripcion y estado activo.
   - El boton `Desactivar` deja al profesional fuera del agendamiento publico y evita depender de ventanas `confirm` del navegador.
   - Los profesionales inactivos se muestran con estado `Inactivo` y boton `Reactivar`.
+  - Se agrego `Eliminar` / `Eliminar definitivo` para borrar el profesional de la hoja `professionals`.
+  - `DELETE /api/admin/professionals/[id]` desactiva; `DELETE /api/admin/professionals/[id]?hard=true` elimina la fila.
 - Admin / usuarios:
   - El panel Admin permite editar usuario completo: nombre, email, nueva clave opcional, rol, centro y estado activo.
   - Los usuarios pueden desactivarse/reactivarse sin perder el registro.
