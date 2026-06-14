@@ -127,6 +127,12 @@ Ultimo foco implementado:
   - El email al profesional no bloquea la cancelacion si Resend falla.
 - Verificacion:
   - Se corrigio lint previo en `ProfilePasswordPage.tsx` eliminando un componente no usado y comillas sin escapar.
+- Fase 0 / auditoria:
+  - Se creo `docs/AUDIT.md` siguiendo el mega prompt recibido.
+  - Score de readiness: 69/100, beta funcional pero riesgosa para escala publica.
+  - Hallazgos principales: falta rate limiting, auth dual compleja, Google Sheets como DB MVP sin transacciones, Google Calendar OAuth por profesional pendiente, monolitos UI grandes, sin tests automatizados.
+  - Se reemplazo `README.md` default por documentacion especifica del proyecto.
+  - Siguiente paso recomendado: Fase 1 seguridad/auth base, empezando por rate limiting en login, reserva y busqueda por email.
 
 ## Nota operativa importante
 

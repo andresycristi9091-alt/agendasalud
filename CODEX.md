@@ -407,6 +407,8 @@ npm run build      # verificar que compila sin errores
 - Admin puede editar todos los datos de profesionales, desactivar/reactivar o eliminarlos definitivamente
 - Resolucion correcta del nombre de usuario en Supabase (5 campos de metadatos)
 - Estado reagendada en el schema de Appointment
+- Fase 0 de auditoria creada en `docs/AUDIT.md`
+- README reemplazado por documentacion especifica de AgendaSalud
 
 ### Pendiente (proximos sprints)
 

@@ -1,36 +1,143 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AgendaSalud
 
-## Getting Started
+SaaS de agendamiento medico para centros de salud, profesionales y pacientes. Permite publicar profesionales, configurar disponibilidad, reservar horas online, sincronizar con Google Calendar mediante service account, enviar correos de confirmacion/cancelacion/recordatorio y administrar centros/usuarios desde un panel interno.
 
-First, run the development server:
+URL de produccion: https://agendasalud.vercel.app
+
+## Stack
+
+- Next.js 16 App Router
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- Supabase Auth
+- Sesion HMAC local para usuarios internos/admin
+- Google Sheets API como base MVP
+- Google Calendar API
+- Resend para email
+- Vercel Cron para recordatorios
+- Zod para validacion
+
+## Perfiles
+
+- Paciente: agenda, consulta y cancela citas sin registro, usando email.
+- Profesional: gestiona agenda, disponibilidad, citas manuales y estadisticas de su centro.
+- Administrador: administra centros, profesionales, usuarios y configuracion publica.
+
+Regla critica: la informacion publica visible para pacientes solo la edita Admin. El profesional no edita su ficha publica.
+
+## Rutas principales
+
+Publicas:
+
+- `/`
+- `/agendar`
+- `/agendar/[professionalSlug]`
+- `/mis-citas`
+- `/cancelar/[id]`
+- `/login`
+- `/cambiar-contrasena`
+
+Dashboard:
+
+- `/dashboard`
+- `/dashboard/agenda`
+- `/dashboard/citas`
+- `/dashboard/disponibilidad`
+- `/dashboard/nueva-cita`
+- `/dashboard/configuracion`
+- `/dashboard/perfil`
+- `/dashboard/admin`
+
+## Variables de entorno
+
+Usa `.env.example` como base:
+
+```bash
+cp .env.example .env.local
+```
+
+Variables relevantes:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `ADMIN_EMAILS`
+- `ADMIN_SESSION_SECRET`
+- `BOOTSTRAP_SECRET`
+- `GOOGLE_CLIENT_EMAIL`
+- `GOOGLE_PRIVATE_KEY`
+- `GOOGLE_PROJECT_ID`
+- `GOOGLE_SHEETS_ID`
+- `GOOGLE_CALENDAR_ID`
+- `NEXT_PUBLIC_APP_URL`
+- `RESEND_API_KEY`
+- `EMAIL_FROM`
+- `CRON_SECRET`
+- `DEFAULT_CENTER_ID`
+
+No subir credenciales reales al repositorio.
+
+## Desarrollo local
+
+```bash
+npm install
+npm run dev
+```
+
+Abrir:
+
+```text
+http://localhost:3000
+```
+
+## Verificacion
+
+Antes de cerrar cambios:
+
+```bash
+npm run lint
+npm run build
+```
+
+No hay suite automatizada de tests aun. La auditoria recomienda agregar pruebas para disponibilidad, reservas y permisos.
+
+## Arquitectura de datos
+
+Google Sheets MVP:
+
+- `professionals`
+- `appointments`
+- `availability`
+- `centers`
+- `users`
+- `remindersSent`
+
+La estructura completa esta documentada en `CODEX.md`.
+
+## Auditoria
+
+La Fase 0 esta documentada en:
+
+```text
+docs/AUDIT.md
+```
+
+Resumen: el producto es funcional como beta, pero antes de escalar se recomienda priorizar rate limiting, endurecimiento de auth/sesiones, tests criticos, refactor de monolitos UI y definicion de migracion futura desde Google Sheets a una base relacional.
+
+## Comandos utiles
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run lint
+npm run build
+npm run start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Notas operativas
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- La zona horaria principal es `America/Santiago`.
+- Google Calendar actual funciona con service account y calendarios compartidos.
+- OAuth por profesional aun no esta implementado.
+- Los emails usan Resend; si `RESEND_API_KEY` no existe, las citas no se bloquean.
+- El cron de recordatorios corre cada hora en Vercel via `vercel.json`.
