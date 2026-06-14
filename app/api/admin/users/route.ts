@@ -1,9 +1,22 @@
 import { NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
+import type { User } from '@supabase/supabase-js'
 import { createAdminSupabaseClient, requireAdmin } from '@/lib/auth/admin'
 import { AdminUserCreateSchema } from '@/lib/validation'
 import { createManagedUser, getManagedUsers } from '@/lib/google/sheets'
 import { hashPassword } from '@/lib/auth/password'
+
+function resolveSupabaseName(user: User): string {
+  const meta = user.user_metadata ?? {}
+  const candidates = [
+    meta.name,
+    meta.full_name,
+    meta.display_name,
+    user.identities?.[0]?.identity_data?.name,
+    user.identities?.[0]?.identity_data?.full_name,
+  ]
+  return candidates.find((v) => typeof v === 'string' && v.trim().length > 0) ?? ''
+}
 
 export async function GET() {
   try {
@@ -33,7 +46,7 @@ export async function GET() {
       users: data.users.map((user) => ({
         id: user.id,
         email: user.email,
-        name: user.user_metadata?.name ?? '',
+        name: resolveSupabaseName(user),
         role: user.user_metadata?.role ?? 'user',
         centerId: user.user_metadata?.centerId ?? '',
         createdAt: user.created_at,

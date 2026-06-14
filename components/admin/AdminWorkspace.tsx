@@ -86,6 +86,8 @@ export function AdminWorkspace() {
   const [centerForm, setCenterForm] = useState(emptyCenter)
   const [professionalForm, setProfessionalForm] = useState(emptyProfessional)
   const [userForm, setUserForm] = useState({ email: '', password: '', name: '', role: 'user' as 'admin' | 'user', centerId: '' })
+  const [showPassword, setShowPassword] = useState(false)
+  const [lastCreatedUser, setLastCreatedUser] = useState<{ name: string; email: string; password: string } | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [userMessage, setUserMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -263,6 +265,8 @@ export function AdminWorkspace() {
   function submitUser(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setUserMessage(null)
+    setLastCreatedUser(null)
+    const passwordSnapshot = userForm.password
     startTransition(async () => {
       const response = await fetch('/api/admin/users', {
         method: 'POST',
@@ -275,8 +279,8 @@ export function AdminWorkspace() {
         return
       }
       setUsers((current) => [data.user, ...current])
+      setLastCreatedUser({ name: data.user.name, email: data.user.email, password: passwordSnapshot })
       setUserForm({ email: '', password: '', name: '', role: 'user', centerId: '' })
-      setUserMessage('Usuario creado.')
     })
   }
 
@@ -451,9 +455,42 @@ export function AdminWorkspace() {
 
           <Panel title="Usuarios y permisos" eyebrow="Accesos">
             <form onSubmit={submitUser} className="grid gap-3 lg:grid-cols-2">
-              <input value={userForm.name} onChange={(e) => setUserForm((v) => ({ ...v, name: e.target.value }))} className={inputClass} placeholder="Nombre" required />
-              <input value={userForm.email} onChange={(e) => setUserForm((v) => ({ ...v, email: e.target.value }))} className={inputClass} placeholder="Email" required />
-              <input value={userForm.password} onChange={(e) => setUserForm((v) => ({ ...v, password: e.target.value }))} className={inputClass} placeholder="Clave" type="password" required />
+              <input
+                value={userForm.name}
+                onChange={(e) => setUserForm((v) => ({ ...v, name: e.target.value }))}
+                className={inputClass}
+                placeholder="Nombre completo"
+                autoComplete="off"
+                required
+              />
+              <input
+                value={userForm.email}
+                onChange={(e) => setUserForm((v) => ({ ...v, email: e.target.value }))}
+                className={inputClass}
+                placeholder="Email"
+                type="email"
+                autoComplete="off"
+                required
+              />
+              <div className="relative">
+                <input
+                  value={userForm.password}
+                  onChange={(e) => setUserForm((v) => ({ ...v, password: e.target.value }))}
+                  className={`${inputClass} pr-20`}
+                  placeholder="Clave inicial (min. 8 caracteres)"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-bold text-slate-500 hover:text-slate-800"
+                >
+                  {showPassword ? 'Ocultar' : 'Ver'}
+                </button>
+              </div>
               <select value={userForm.role} onChange={(e) => setUserForm((v) => ({ ...v, role: e.target.value as 'admin' | 'user' }))} className={inputClass}>
                 <option value="user">Usuario</option>
                 <option value="admin">Admin</option>
@@ -462,14 +499,36 @@ export function AdminWorkspace() {
                 <option value="">Sin centro / todos si es Admin</option>
                 {centers.map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}
               </select>
-              <button className="h-12 rounded-2xl bg-slate-950 text-sm font-black text-white lg:col-span-2">Crear usuario</button>
+              <button disabled={isPending} className="h-12 rounded-2xl bg-slate-950 text-sm font-black text-white disabled:opacity-60 lg:col-span-2">
+                {isPending ? 'Creando...' : 'Crear usuario'}
+              </button>
             </form>
-            {userMessage && <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-sm font-bold text-amber-800">{userMessage}</p>}
+
+            {userMessage && <p className="mt-3 rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700">{userMessage}</p>}
+
+            {lastCreatedUser && (
+              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="mb-2 text-sm font-black text-emerald-800">Usuario creado. Comparte estas credenciales:</p>
+                <div className="space-y-1 rounded-xl border border-emerald-200 bg-white p-3 font-mono text-sm text-slate-700">
+                  <p><span className="font-bold text-slate-400">Email:</span> {lastCreatedUser.email}</p>
+                  <p><span className="font-bold text-slate-400">Clave:</span> {lastCreatedUser.password}</p>
+                </div>
+                <p className="mt-2 text-xs text-emerald-700">El profesional puede cambiar su clave desde el dashboard en Perfil.</p>
+                <button
+                  type="button"
+                  onClick={() => setLastCreatedUser(null)}
+                  className="mt-3 rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50"
+                >
+                  Cerrar
+                </button>
+              </div>
+            )}
+
             <div className="mt-5 space-y-3">
               {users.map((user) => (
                 <div key={user.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="font-black text-slate-950">{user.name || user.email}</p>
+                    <p className="font-black text-slate-950">{user.name || <span className="italic text-slate-400">Sin nombre</span>}</p>
                     <p className="text-sm text-slate-500">{user.email}</p>
                     <p className="text-xs text-slate-400">{centers.find((center) => center.id === user.centerId)?.name ?? 'Sin centro'}</p>
                   </div>

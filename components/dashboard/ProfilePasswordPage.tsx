@@ -4,11 +4,15 @@ import { FormEvent, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 type Step = 'email' | 'linkSent' | 'password' | 'done'
+type Mode = 'direct' | 'email'
 
 export function ProfilePasswordPage() {
   const supabase = createClient()
+  const [mode, setMode] = useState<Mode>('direct')
+  const [hasSupabaseSession, setHasSupabaseSession] = useState(false)
   const [step, setStep] = useState<Step>('email')
   const [email, setEmail] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [message, setMessage] = useState<string | null>(null)
@@ -24,14 +28,19 @@ export function ProfilePasswordPage() {
       .catch(() => null)
 
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session && window.location.search.includes('reset=1')) {
-        setStep('password')
-        setMessage('Enlace verificado. Ahora puedes crear una nueva contrasena.')
+      if (data.session) {
+        setHasSupabaseSession(true)
+        if (window.location.search.includes('reset=1')) {
+          setMode('email')
+          setStep('password')
+          setMessage('Enlace verificado. Ahora puedes crear una nueva contrasena.')
+        }
       }
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
+        setMode('email')
         setStep('password')
         setMessage('Enlace verificado. Ahora puedes crear una nueva contrasena.')
       }
@@ -39,6 +48,55 @@ export function ProfilePasswordPage() {
 
     return () => listener.subscription.unsubscribe()
   }, [supabase.auth])
+
+  async function changePasswordDirect(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError(null)
+    setMessage(null)
+
+    if (password.length < 8) {
+      setError('La nueva contrasena debe tener al menos 8 caracteres.')
+      return
+    }
+    if (password !== confirmPassword) {
+      setError('Las contrasenas no coinciden.')
+      return
+    }
+
+    setLoading(true)
+
+    if (hasSupabaseSession) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: currentPassword })
+      if (signInError) {
+        setLoading(false)
+        setError('La clave actual es incorrecta.')
+        return
+      }
+      const { error: updateError } = await supabase.auth.updateUser({ password })
+      setLoading(false)
+      if (updateError) {
+        setError('No pudimos actualizar la contrasena. Intenta nuevamente.')
+        return
+      }
+    } else {
+      const response = await fetch('/api/dashboard/professionals/password', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword: password }),
+      })
+      setLoading(false)
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        setError(data.error ?? 'No pudimos actualizar la contrasena.')
+        return
+      }
+    }
+
+    setCurrentPassword('')
+    setPassword('')
+    setConfirmPassword('')
+    setMessage('Contrasena actualizada correctamente. Ya puedes usarla en tu proximo inicio de sesion.')
+  }
 
   async function sendRecoveryLink(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -104,19 +162,40 @@ export function ProfilePasswordPage() {
           Perfil de usuario
         </p>
         <h1 className="max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-5xl">
-          Cambia tu contrasena con verificacion por correo
+          Cambiar contrasena
         </h1>
-        <p className="mt-4 max-w-2xl text-base leading-7 text-white/78">
-          Para proteger la cuenta, enviaremos un enlace seguro al correo registrado antes de permitir el cambio.
-        </p>
+        {email && (
+          <p className="mt-3 text-base leading-7 text-white/78">Cuenta: <strong>{email}</strong></p>
+        )}
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_8px_28px_rgba(15,23,42,0.06)] sm:p-8">
-          <StepIndicator step={step} />
+      <div className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+        <button
+          type="button"
+          onClick={() => { setMode('direct'); setMessage(null); setError(null) }}
+          className={[
+            'flex-1 rounded-xl py-2.5 text-sm font-black transition',
+            mode === 'direct' ? 'bg-slate-950 text-white' : 'text-slate-500 hover:text-slate-800',
+          ].join(' ')}
+        >
+          Cambio directo
+        </button>
+        <button
+          type="button"
+          onClick={() => { setMode('email'); setMessage(null); setError(null) }}
+          className={[
+            'flex-1 rounded-xl py-2.5 text-sm font-black transition',
+            mode === 'email' ? 'bg-slate-950 text-white' : 'text-slate-500 hover:text-slate-800',
+          ].join(' ')}
+        >
+          Por correo
+        </button>
+      </div>
 
+      <section className="grid gap-6 lg:grid-cols-[1fr_280px]">
+        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_8px_28px_rgba(15,23,42,0.06)] sm:p-8">
           {message && (
-            <div className="mb-5 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-semibold text-blue-700">
+            <div className="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">
               {message}
             </div>
           )}
@@ -127,44 +206,19 @@ export function ProfilePasswordPage() {
             </div>
           )}
 
-          {step === 'email' && (
-            <form onSubmit={sendRecoveryLink} className="space-y-5">
-              <Field label="Correo electronico">
+          {mode === 'direct' && (
+            <form onSubmit={changePasswordDirect} className="space-y-5">
+              <Field label="Clave actual">
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="nombre@centrodesalud.cl"
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  placeholder="Tu clave actual"
                   className={inputClass}
                   required
                 />
               </Field>
-              <PrimaryButton loading={loading}>Enviar enlace seguro</PrimaryButton>
-            </form>
-          )}
-
-          {step === 'linkSent' && (
-            <div className="rounded-3xl border border-blue-100 bg-blue-50 p-6">
-              <p className="text-lg font-black text-blue-800">Revisa tu correo</p>
-              <p className="mt-2 text-sm leading-6 text-blue-700">
-                Abre el correo de Supabase Auth y presiona el enlace. Ese enlace verifica tu identidad y te traera de vuelta para crear una nueva contrasena.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setStep('email')
-                  setMessage(null)
-                  setError(null)
-                }}
-                className="mt-5 h-12 rounded-2xl border border-blue-200 bg-white px-5 text-sm font-black text-blue-700 transition hover:bg-blue-50"
-              >
-                Enviar a otro correo
-              </button>
-            </div>
-          )}
-
-          {step === 'password' && (
-            <form onSubmit={updatePassword} className="space-y-5">
               <Field label="Nueva contrasena">
                 <input
                   type="password"
@@ -191,34 +245,89 @@ export function ProfilePasswordPage() {
             </form>
           )}
 
-          {step === 'done' && (
-            <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-6">
-              <p className="text-lg font-black text-emerald-800">Cambio completado</p>
-              <p className="mt-2 text-sm leading-6 text-emerald-700">
-                Tu contrasena fue actualizada. Puedes seguir trabajando o cerrar sesion y volver a entrar con la nueva clave.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setStep('email')
-                  setMessage(null)
-                }}
-                className="mt-5 h-12 rounded-2xl bg-emerald-600 px-5 text-sm font-black text-white transition hover:bg-emerald-700"
-              >
-                Cambiar otra vez
-              </button>
-            </div>
+          {mode === 'email' && (
+            <>
+              {step === 'email' && (
+                <form onSubmit={sendRecoveryLink} className="space-y-5">
+                  <p className="text-sm text-slate-500">Te enviaremos un enlace al correo. Abrelo y podras definir una nueva clave.</p>
+                  <Field label="Correo electronico">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder="nombre@centrodesalud.cl"
+                      className={inputClass}
+                      required
+                    />
+                  </Field>
+                  <PrimaryButton loading={loading}>Enviar enlace seguro</PrimaryButton>
+                </form>
+              )}
+
+              {step === 'linkSent' && (
+                <div className="rounded-3xl border border-blue-100 bg-blue-50 p-6">
+                  <p className="text-lg font-black text-blue-800">Revisa tu correo</p>
+                  <p className="mt-2 text-sm leading-6 text-blue-700">
+                    Abre el enlace que te enviamos y podras crear una nueva contrasena.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setStep('email'); setMessage(null); setError(null) }}
+                    className="mt-5 h-12 rounded-2xl border border-blue-200 bg-white px-5 text-sm font-black text-blue-700 transition hover:bg-blue-50"
+                  >
+                    Reenviar
+                  </button>
+                </div>
+              )}
+
+              {step === 'password' && (
+                <form onSubmit={updatePassword} className="space-y-5">
+                  <Field label="Nueva contrasena">
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Minimo 8 caracteres"
+                      className={inputClass}
+                      required
+                    />
+                  </Field>
+                  <Field label="Repetir nueva contrasena">
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      placeholder="Confirma tu nueva contrasena"
+                      className={inputClass}
+                      required
+                    />
+                  </Field>
+                  <PrimaryButton loading={loading}>Actualizar contrasena</PrimaryButton>
+                </form>
+              )}
+
+              {step === 'done' && (
+                <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-6">
+                  <p className="text-lg font-black text-emerald-800">Cambio completado</p>
+                  <p className="mt-2 text-sm leading-6 text-emerald-700">
+                    Tu contrasena fue actualizada.
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
 
         <aside className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_8px_28px_rgba(15,23,42,0.06)]">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Seguridad</p>
-          <h2 className="mt-2 text-xl font-black tracking-tight text-slate-950">Recomendaciones</h2>
+          <h2 className="mt-2 text-lg font-black tracking-tight text-slate-950">Recomendaciones</h2>
           <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-500">
             <li>Usa al menos 8 caracteres.</li>
             <li>No reutilices claves personales.</li>
-            <li>El enlace vence por seguridad.</li>
-            <li>Si no llega el correo, revisa spam o solicita un nuevo enlace.</li>
+            <li>Cambia la clave inicial que te dio el admin.</li>
+            <li>Si olvidaste tu clave, usa la opcion "Por correo".</li>
           </ul>
         </aside>
       </section>
