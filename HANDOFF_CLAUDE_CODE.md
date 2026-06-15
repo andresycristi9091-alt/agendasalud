@@ -79,6 +79,8 @@ Ultimo foco implementado:
   - Al pinchar `Editar` en una tarjeta de profesional, se despliega un panel inline debajo de esa tarjeta con pestañas `Registro`, `Agenda` y `Eliminar`.
   - La pestaña `Eliminar` incluye `Quitar del directorio publico` y `Eliminar registro`.
   - Cada tarjeta del directorio muestra siempre el boton directo `Eliminar`, junto a `Editar`, `Ver` y `Reactivar/Quitar`.
+  - Se elimino el modal antiguo duplicado de edicion de profesionales. La unica experiencia vigente es inline dentro de la tarjeta del directorio.
+  - Cuando Admin edita un profesional, el panel lateral de `Nuevo profesional` cambia a `Edicion activa` para evitar crear/editar por error con el mismo formulario.
   - `DELETE /api/admin/professionals/[id]` desactiva; `DELETE /api/admin/professionals/[id]?hard=true` intenta eliminar la fila.
   - Si Google Sheets falla al borrar la fila, la API desactiva el profesional como fallback para sacarlo del directorio publico.
 - Admin / usuarios:

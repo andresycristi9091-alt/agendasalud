@@ -89,7 +89,6 @@ export function AdminWorkspace() {
   const [selectedProfessionalId, setSelectedProfessionalId] = useState('')
   const [selectedUserId, setSelectedUserId] = useState('')
   const [pendingDeleteProfessionalId, setPendingDeleteProfessionalId] = useState('')
-  const [showEditModal, setShowEditModal] = useState(false)
   const [professionalEditTab, setProfessionalEditTab] = useState<'registro' | 'agenda' | 'eliminar'>('registro')
   const [centerForm, setCenterForm] = useState(emptyCenter)
   const [professionalForm, setProfessionalForm] = useState(emptyProfessional)
@@ -249,7 +248,6 @@ export function AdminWorkspace() {
       setProfessionals(data.professionals ?? [])
       setMessage(editing ? 'Profesional actualizado.' : 'Profesional creado.')
       if (editing) {
-        setShowEditModal(false)
         setSelectedProfessionalId('')
       } else {
         setProfessionalForm(emptyProfessional)
@@ -287,7 +285,6 @@ export function AdminWorkspace() {
     setPendingDeleteProfessionalId('')
     setSelectedProfessionalId('')
     setProfessionalForm(emptyProfessional)
-    setShowEditModal(false)
     setMessage('Profesional eliminado definitivamente.')
   }
 
@@ -310,7 +307,6 @@ export function AdminWorkspace() {
     setPendingDeleteProfessionalId('')
     setProfessionalEditTab('registro')
     setSelectedProfessionalId(id)
-    setShowEditModal(false)
     setMessage(null)
   }
 
@@ -318,7 +314,6 @@ export function AdminWorkspace() {
     setSelectedProfessionalId('')
     setProfessionalEditTab('registro')
     setProfessionalForm(emptyProfessional)
-    setShowEditModal(false)
     setPendingDeleteProfessionalId('')
     setMessage(null)
   }
@@ -448,36 +443,52 @@ export function AdminWorkspace() {
             </form>
           </Panel>
 
-          <Panel title="Nuevo profesional" eyebrow="Profesionales">
-            <form onSubmit={submitProfessional} className="space-y-3">
-              <select value={professionalForm.centerId} onChange={(e) => updateProfessionalForm('centerId', e.target.value)} className={inputClass}>
-                <option value="">Seleccionar centro</option>
-                {centers.filter((center) => center.active).map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}
-              </select>
-              <input value={professionalForm.name} onChange={(e) => updateProfessionalForm('name', e.target.value)} className={inputClass} placeholder="Nombre profesional" required />
-              <input value={professionalForm.slug} onChange={(e) => updateProfessionalForm('slug', slugify(e.target.value))} className={inputClass} placeholder="slug-publico" required />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <input value={professionalForm.professionalType} onChange={(e) => updateProfessionalForm('professionalType', e.target.value)} className={inputClass} placeholder="Tipo: Neurologo..." />
-                <input value={professionalForm.specialty} onChange={(e) => updateProfessionalForm('specialty', e.target.value)} className={inputClass} placeholder="Especialidad" required />
+          <Panel title={selectedProfessionalId ? 'Edicion activa' : 'Nuevo profesional'} eyebrow="Profesionales">
+            {selectedProfessionalId ? (
+              <div className="rounded-3xl border border-blue-100 bg-blue-50 p-4">
+                <p className="text-sm font-black text-blue-900">Estas editando un profesional del directorio.</p>
+                <p className="mt-2 text-sm leading-6 text-blue-700">
+                  Usa las pestañas que se desplegaron bajo la tarjeta seleccionada para modificar registro, agenda o eliminar.
+                </p>
+                <button
+                  type="button"
+                  onClick={clearProfessionalEdit}
+                  className="mt-4 h-11 w-full rounded-2xl bg-blue-600 text-sm font-black text-white transition hover:bg-blue-700"
+                >
+                  Cerrar edicion y crear nuevo
+                </button>
               </div>
-              <input value={professionalForm.photoUrl} onChange={(e) => updateProfessionalForm('photoUrl', e.target.value)} className={inputClass} placeholder="URL fotografia" />
-              <textarea value={professionalForm.publicDescription} onChange={(e) => updateProfessionalForm('publicDescription', e.target.value)} className={`${inputClass} min-h-20 py-3`} placeholder="Descripcion publica" />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <input value={professionalForm.email} onChange={(e) => updateProfessionalForm('email', e.target.value)} className={inputClass} placeholder="Correo profesional" />
-                <input value={professionalForm.phone} onChange={(e) => updateProfessionalForm('phone', e.target.value)} className={inputClass} placeholder="Telefono" />
-              </div>
-              <input value={professionalForm.calendarId} onChange={(e) => updateProfessionalForm('calendarId', e.target.value)} className={inputClass} placeholder="Calendar ID (opcional)" />
-              <select value={professionalForm.appointmentDurationDefault} onChange={(e) => updateProfessionalForm('appointmentDurationDefault', Number(e.target.value))} className={inputClass}>
-                <option value={10}>10 min por cita</option>
-                <option value={15}>15 min por cita</option>
-                <option value={30}>30 min por cita</option>
-                <option value={45}>45 min por cita</option>
-                <option value={60}>1 hora por cita</option>
-              </select>
-              <button disabled={isPending} className="h-12 w-full rounded-2xl bg-slate-950 text-sm font-black text-white disabled:opacity-50">
-                {isPending ? 'Creando...' : 'Crear profesional'}
-              </button>
-            </form>
+            ) : (
+              <form onSubmit={submitProfessional} className="space-y-3">
+                <select value={professionalForm.centerId} onChange={(e) => updateProfessionalForm('centerId', e.target.value)} className={inputClass}>
+                  <option value="">Seleccionar centro</option>
+                  {centers.filter((center) => center.active).map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}
+                </select>
+                <input value={professionalForm.name} onChange={(e) => updateProfessionalForm('name', e.target.value)} className={inputClass} placeholder="Nombre profesional" required />
+                <input value={professionalForm.slug} onChange={(e) => updateProfessionalForm('slug', slugify(e.target.value))} className={inputClass} placeholder="slug-publico" required />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <input value={professionalForm.professionalType} onChange={(e) => updateProfessionalForm('professionalType', e.target.value)} className={inputClass} placeholder="Tipo: Neurologo..." />
+                  <input value={professionalForm.specialty} onChange={(e) => updateProfessionalForm('specialty', e.target.value)} className={inputClass} placeholder="Especialidad" required />
+                </div>
+                <input value={professionalForm.photoUrl} onChange={(e) => updateProfessionalForm('photoUrl', e.target.value)} className={inputClass} placeholder="URL fotografia" />
+                <textarea value={professionalForm.publicDescription} onChange={(e) => updateProfessionalForm('publicDescription', e.target.value)} className={`${inputClass} min-h-20 py-3`} placeholder="Descripcion publica" />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <input value={professionalForm.email} onChange={(e) => updateProfessionalForm('email', e.target.value)} className={inputClass} placeholder="Correo profesional" />
+                  <input value={professionalForm.phone} onChange={(e) => updateProfessionalForm('phone', e.target.value)} className={inputClass} placeholder="Telefono" />
+                </div>
+                <input value={professionalForm.calendarId} onChange={(e) => updateProfessionalForm('calendarId', e.target.value)} className={inputClass} placeholder="Calendar ID (opcional)" />
+                <select value={professionalForm.appointmentDurationDefault} onChange={(e) => updateProfessionalForm('appointmentDurationDefault', Number(e.target.value))} className={inputClass}>
+                  <option value={10}>10 min por cita</option>
+                  <option value={15}>15 min por cita</option>
+                  <option value={30}>30 min por cita</option>
+                  <option value={45}>45 min por cita</option>
+                  <option value={60}>1 hora por cita</option>
+                </select>
+                <button disabled={isPending} className="h-12 w-full rounded-2xl bg-slate-950 text-sm font-black text-white disabled:opacity-50">
+                  {isPending ? 'Creando...' : 'Crear profesional'}
+                </button>
+              </form>
+            )}
           </Panel>
         </div>
 
@@ -856,168 +867,7 @@ export function AdminWorkspace() {
         </div>
       </section>
 
-      {message && !showEditModal && <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-black text-blue-700">{message}</div>}
-
-      {showEditModal && selectedProfessional && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 px-4">
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={clearProfessionalEdit} />
-          <div className="relative my-auto w-full max-w-xl rounded-[28px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.22)]">
-            <div className="flex items-center gap-4 border-b border-slate-100 p-6">
-              <Avatar professional={selectedProfessional} />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Editar profesional</p>
-                <h2 className="truncate text-lg font-black text-slate-950">{selectedProfessional.name}</h2>
-                <p className="truncate text-sm text-slate-500">{selectedProfessional.professionalType || selectedProfessional.specialty}</p>
-              </div>
-              <button
-                type="button"
-                onClick={clearProfessionalEdit}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100"
-              >
-                x
-              </button>
-            </div>
-
-            <div className="flex border-b border-slate-100 px-6">
-              {([
-                { id: 'registro', label: 'Datos de registro' },
-                { id: 'agenda', label: 'Agenda y contacto' },
-                { id: 'eliminar', label: 'Eliminar' },
-              ] as const).map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setProfessionalEditTab(tab.id)}
-                  className={`border-b-2 px-4 py-4 text-sm font-black transition ${
-                    professionalEditTab === tab.id
-                      ? tab.id === 'eliminar'
-                        ? 'border-red-500 text-red-700'
-                        : 'border-blue-600 text-blue-700'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            <form onSubmit={submitProfessional} className="p-6">
-              {professionalEditTab === 'registro' && (
-                <div className="space-y-3">
-                  <select value={professionalForm.centerId} onChange={(e) => updateProfessionalForm('centerId', e.target.value)} className={inputClass}>
-                    <option value="">Seleccionar centro</option>
-                    {centers.filter((c) => c.active).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <input value={professionalForm.name} onChange={(e) => updateProfessionalForm('name', e.target.value)} className={inputClass} placeholder="Nombre profesional" required />
-                    <input value={professionalForm.slug} onChange={(e) => updateProfessionalForm('slug', slugify(e.target.value))} className={inputClass} placeholder="slug-publico" required />
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <input value={professionalForm.professionalType} onChange={(e) => updateProfessionalForm('professionalType', e.target.value)} className={inputClass} placeholder="Tipo: Neurologo, Psicologa..." />
-                    <input value={professionalForm.specialty} onChange={(e) => updateProfessionalForm('specialty', e.target.value)} className={inputClass} placeholder="Especialidad" required />
-                  </div>
-                  <input value={professionalForm.photoUrl} onChange={(e) => updateProfessionalForm('photoUrl', e.target.value)} className={inputClass} placeholder="URL fotografia" />
-                  <textarea value={professionalForm.publicDescription} onChange={(e) => updateProfessionalForm('publicDescription', e.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="Descripcion publica" />
-                  <button disabled={isPending} className="h-12 w-full rounded-2xl bg-slate-950 text-sm font-black text-white disabled:opacity-50">
-                    {isPending ? 'Guardando...' : 'Guardar cambios'}
-                  </button>
-                </div>
-              )}
-
-              {professionalEditTab === 'agenda' && (
-                <div className="space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <input value={professionalForm.email} onChange={(e) => updateProfessionalForm('email', e.target.value)} className={inputClass} placeholder="Correo profesional" />
-                    <input value={professionalForm.phone} onChange={(e) => updateProfessionalForm('phone', e.target.value)} className={inputClass} placeholder="Telefono" />
-                  </div>
-                  <input value={professionalForm.calendarId} onChange={(e) => updateProfessionalForm('calendarId', e.target.value)} className={inputClass} placeholder="Calendar ID (opcional)" />
-                  <select value={professionalForm.appointmentDurationDefault} onChange={(e) => updateProfessionalForm('appointmentDurationDefault', Number(e.target.value))} className={inputClass}>
-                    <option value={10}>10 minutos por cita</option>
-                    <option value={15}>15 minutos por cita</option>
-                    <option value={30}>30 minutos por cita</option>
-                    <option value={45}>45 minutos por cita</option>
-                    <option value={60}>1 hora por cita</option>
-                  </select>
-                  <select value={professionalForm.timezone} onChange={(e) => updateProfessionalForm('timezone', e.target.value)} className={inputClass}>
-                    <option value="America/Santiago">America/Santiago</option>
-                  </select>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={professionalForm.active}
-                      onChange={(e) => updateProfessionalForm('active', e.target.checked)}
-                      className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    Profesional activo y visible para agendamiento publico
-                  </label>
-                  <button disabled={isPending} className="h-12 w-full rounded-2xl bg-slate-950 text-sm font-black text-white disabled:opacity-50">
-                    {isPending ? 'Guardando...' : 'Guardar cambios'}
-                  </button>
-                </div>
-              )}
-
-              {professionalEditTab === 'eliminar' && (
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                    <p className="font-black text-amber-800">Quitar del directorio publico</p>
-                    <p className="mt-1 text-sm text-amber-700">El profesional deja de aparecer en agendamiento. Su registro y citas se conservan.</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (selectedProfessional.active) {
-                          deactivateProfessional(selectedProfessionalId).then(() => setShowEditModal(false))
-                        }
-                      }}
-                      disabled={!selectedProfessional.active}
-                      className="mt-3 h-11 w-full rounded-2xl border border-amber-400 bg-white text-sm font-black text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {selectedProfessional.active ? 'Quitar del directorio' : 'Ya esta fuera del directorio'}
-                    </button>
-                  </div>
-                  <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-                    <p className="font-black text-red-800">Eliminar registro definitivamente</p>
-                    <p className="mt-2 text-sm leading-6 text-red-700">
-                      Intenta borrar el registro de Google Sheets. Si no es posible, lo desactiva y lo oculta del directorio. Esta accion no se puede deshacer.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => deleteProfessional(selectedProfessionalId)}
-                      className={`mt-4 h-12 w-full rounded-2xl border text-sm font-black transition ${
-                        pendingDeleteProfessionalId === selectedProfessionalId
-                          ? 'border-red-500 bg-red-600 text-white hover:bg-red-700'
-                          : 'border-red-200 bg-white text-red-600 hover:bg-red-100'
-                      }`}
-                    >
-                      {pendingDeleteProfessionalId === selectedProfessionalId ? 'Confirmar eliminacion definitiva' : 'Eliminar registro'}
-                    </button>
-                    {pendingDeleteProfessionalId === selectedProfessionalId && (
-                      <button
-                        type="button"
-                        onClick={() => setPendingDeleteProfessionalId('')}
-                        className="mt-2 w-full text-center text-xs font-bold text-slate-500 hover:underline"
-                      >
-                        Cancelar
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </form>
-
-            {message && (
-              <div className={`mx-6 mb-6 rounded-2xl p-4 text-sm font-black ${
-                message.includes('actualizado') || message.includes('reactivado') || message.includes('creado')
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : message.includes('Error') || message.includes('error') || message.includes('No pud')
-                  ? 'bg-red-50 text-red-700'
-                  : 'bg-blue-50 text-blue-700'
-              }`}>
-                {message}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {message && <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-black text-blue-700">{message}</div>}
     </div>
   )
 
