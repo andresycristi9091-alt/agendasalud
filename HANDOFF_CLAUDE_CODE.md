@@ -130,6 +130,20 @@ Ultimo foco implementado:
   - Bloque de confianza/privacidad: HTTPS, uso acotado de datos, confirmacion y politica de cambios.
   - FAQ final para resolver dudas antes de confirmar.
   - Recordatorio visible: no ingresar datos clinicos sensibles y no usar el flujo para urgencias.
+- Landing publica reestructurada segun `PROMPT_Plataforma_Agenda_Medica.md`:
+  - Hero SaaS con 3 CTAs: paciente, profesional y demo.
+  - Flujo paciente/profesional en 3 pasos.
+  - Beneficios por perfil.
+  - Bloque de IA preparada.
+  - Testimonios placeholder.
+  - Seguridad/privacidad.
+  - Planes SaaS preparados.
+  - CTA final y footer completo.
+- Seguridad de usuarios:
+  - Creacion/edicion/cambio de contrasena exige 8+ caracteres, al menos una mayuscula y un numero.
+  - UI Admin y Perfil muestran la regla antes de enviar.
+- Documentacion nueva:
+  - `docs/PRODUCT_STRUCTURE.md` traduce el prompt grande a fases implementables sobre el stack actual.
 - Hotfix produccion:
   - `ADMIN_SESSION_SECRET` ya no provoca 500 si falta; usa fallback estable para no romper `/dashboard`.
   - `ADMIN_EMAILS` ya no provoca 500 si falta; retorna lista vacia y respeta `user_metadata.role`.

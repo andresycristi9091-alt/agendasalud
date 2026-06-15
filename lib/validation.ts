@@ -1,5 +1,10 @@
 import { z } from 'zod'
 
+export const StrongPasswordSchema = z.string()
+  .min(8, 'La contrasena debe tener al menos 8 caracteres')
+  .regex(/[A-Z]/, 'La contrasena debe incluir al menos una mayuscula')
+  .regex(/[0-9]/, 'La contrasena debe incluir al menos un numero')
+
 export const AppointmentSchema = z.object({
   professionalSlug: z.string().min(1).max(80).regex(/^[a-z0-9-]+$/),
   patientName:      z.string().min(2).max(100),
@@ -60,7 +65,7 @@ export const AdminProfessionalSchema = z.object({
 
 export const AdminUserCreateSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  password: StrongPasswordSchema,
   name: z.string().min(2).max(120),
   role: z.enum(['admin', 'user']),
   centerId: z.string().optional().default(''),
@@ -70,7 +75,7 @@ export const AdminUserUpdateSchema = z.object({
   email: z.string().email().optional(),
   role: z.enum(['admin', 'user']).optional(),
   name: z.string().min(2).max(120).optional(),
-  password: z.string().min(8).optional().or(z.literal('')),
+  password: StrongPasswordSchema.optional().or(z.literal('')),
   centerId: z.string().optional(),
   active: z.boolean().optional(),
 })

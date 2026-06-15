@@ -3,6 +3,7 @@ import { getLocalAdminSession } from '@/lib/auth/local-admin-session'
 import { getManagedUserByEmail, updateManagedUser } from '@/lib/google/sheets'
 import { verifyPassword, hashPassword } from '@/lib/auth/password'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
+import { StrongPasswordSchema } from '@/lib/validation'
 
 export async function PATCH(req: Request) {
   const session = await getLocalAdminSession()
@@ -32,8 +33,9 @@ export async function PATCH(req: Request) {
     return rateLimitResponse(limit, 'Demasiados intentos de cambio de contrasena. Espera unos minutos.')
   }
 
-  if (typeof newPassword !== 'string' || newPassword.length < 8) {
-    return NextResponse.json({ error: 'La nueva contrasena debe tener al menos 8 caracteres' }, { status: 400 })
+  const parsedPassword = StrongPasswordSchema.safeParse(newPassword)
+  if (!parsedPassword.success) {
+    return NextResponse.json({ error: parsedPassword.error.issues[0]?.message ?? 'La nueva contrasena no cumple la politica de seguridad' }, { status: 400 })
   }
 
   const user = await getManagedUserByEmail(session.email)

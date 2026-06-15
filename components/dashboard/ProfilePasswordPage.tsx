@@ -6,6 +6,13 @@ import { createClient } from '@/lib/supabase/client'
 type Step = 'email' | 'linkSent' | 'password' | 'done'
 type Mode = 'direct' | 'email'
 
+function getPasswordPolicyError(password: string) {
+  if (password.length < 8) return 'La nueva contrasena debe tener al menos 8 caracteres.'
+  if (!/[A-Z]/.test(password)) return 'La nueva contrasena debe incluir al menos una mayuscula.'
+  if (!/[0-9]/.test(password)) return 'La nueva contrasena debe incluir al menos un numero.'
+  return null
+}
+
 export function ProfilePasswordPage() {
   const supabase = createClient()
   const [mode, setMode] = useState<Mode>('direct')
@@ -54,8 +61,9 @@ export function ProfilePasswordPage() {
     setError(null)
     setMessage(null)
 
-    if (password.length < 8) {
-      setError('La nueva contrasena debe tener al menos 8 caracteres.')
+    const policyError = getPasswordPolicyError(password)
+    if (policyError) {
+      setError(policyError)
       return
     }
     if (password !== confirmPassword) {
@@ -130,8 +138,9 @@ export function ProfilePasswordPage() {
     setError(null)
     setMessage(null)
 
-    if (password.length < 8) {
-      setError('La nueva contrasena debe tener al menos 8 caracteres.')
+    const policyError = getPasswordPolicyError(password)
+    if (policyError) {
+      setError(policyError)
       return
     }
 
@@ -225,8 +234,10 @@ export function ProfilePasswordPage() {
                   autoComplete="new-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Minimo 8 caracteres"
+                  placeholder="8+ caracteres, mayuscula y numero"
                   className={inputClass}
+                  pattern="(?=.*[A-Z])(?=.*[0-9]).{8,}"
+                  title="Debe tener al menos 8 caracteres, una mayuscula y un numero"
                   required
                 />
               </Field>
@@ -238,6 +249,8 @@ export function ProfilePasswordPage() {
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   placeholder="Confirma tu nueva contrasena"
                   className={inputClass}
+                  pattern="(?=.*[A-Z])(?=.*[0-9]).{8,}"
+                  title="Debe tener al menos 8 caracteres, una mayuscula y un numero"
                   required
                 />
               </Field>
@@ -288,8 +301,10 @@ export function ProfilePasswordPage() {
                       autoComplete="new-password"
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
-                      placeholder="Minimo 8 caracteres"
+                      placeholder="8+ caracteres, mayuscula y numero"
                       className={inputClass}
+                      pattern="(?=.*[A-Z])(?=.*[0-9]).{8,}"
+                      title="Debe tener al menos 8 caracteres, una mayuscula y un numero"
                       required
                     />
                   </Field>
@@ -301,6 +316,8 @@ export function ProfilePasswordPage() {
                       onChange={(event) => setConfirmPassword(event.target.value)}
                       placeholder="Confirma tu nueva contrasena"
                       className={inputClass}
+                      pattern="(?=.*[A-Z])(?=.*[0-9]).{8,}"
+                      title="Debe tener al menos 8 caracteres, una mayuscula y un numero"
                       required
                     />
                   </Field>

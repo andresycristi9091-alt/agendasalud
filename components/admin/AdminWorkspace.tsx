@@ -712,10 +712,12 @@ export function AdminWorkspace() {
                   value={userForm.password}
                   onChange={(e) => setUserForm((v) => ({ ...v, password: e.target.value }))}
                   className={`${inputClass} pr-20`}
-                  placeholder="Clave inicial (min. 8 caracteres)"
+                  placeholder="Clave inicial: 8+ caracteres, mayuscula y numero"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   minLength={8}
+                  pattern="(?=.*[A-Z])(?=.*[0-9]).{8,}"
+                  title="Debe tener al menos 8 caracteres, una mayuscula y un numero"
                   required
                 />
                 <button
@@ -792,9 +794,11 @@ export function AdminWorkspace() {
                       value={userEditForm.password}
                       onChange={(e) => setUserEditForm((v) => ({ ...v, password: e.target.value }))}
                       className={`${inputClass} pr-20`}
-                      placeholder="Nueva clave opcional"
+                      placeholder="Nueva clave opcional: 8+ caracteres, mayuscula y numero"
                       type={showEditPassword ? 'text' : 'password'}
                       autoComplete="new-password"
+                      pattern="(?=.*[A-Z])(?=.*[0-9]).{8,}"
+                      title="Debe tener al menos 8 caracteres, una mayuscula y un numero"
                     />
                     <button
                       type="button"
