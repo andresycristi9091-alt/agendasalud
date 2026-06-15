@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
 import type { User } from '@supabase/supabase-js'
-import { createAdminSupabaseClient, requireAdmin } from '@/lib/auth/admin'
+import { createAdminSupabaseClient, isPrimaryAdminEmail, requireAdmin } from '@/lib/auth/admin'
 import { AdminUserCreateSchema } from '@/lib/validation'
 import { createManagedUser, getManagedUsers } from '@/lib/google/sheets'
 import { hashPassword } from '@/lib/auth/password'
@@ -31,26 +31,28 @@ function resolveSupabaseName(user: User): string {
 }
 
 function mapManagedUser(user: Awaited<ReturnType<typeof getManagedUsers>>[number]): AdminUserPayload {
+  const isPrimaryAdmin = isPrimaryAdminEmail(user.email)
   return {
     id: user.id,
     email: user.email,
     name: user.name,
-    role: user.role,
-    centerId: user.centerId,
-    active: user.active,
+    role: isPrimaryAdmin ? 'admin' : 'user',
+    centerId: isPrimaryAdmin ? '' : user.centerId,
+    active: isPrimaryAdmin ? true : user.active,
     createdAt: user.createdAt,
     source: 'AgendaSalud',
   }
 }
 
 function mapSupabaseUser(user: User): AdminUserPayload {
+  const isPrimaryAdmin = isPrimaryAdminEmail(user.email)
   return {
     id: user.id,
     email: user.email ?? '',
     name: resolveSupabaseName(user),
-    role: user.user_metadata?.role === 'admin' ? 'admin' : 'user',
-    centerId: user.user_metadata?.centerId ?? '',
-    active: !user.banned_until,
+    role: isPrimaryAdmin ? 'admin' : 'user',
+    centerId: isPrimaryAdmin ? '' : user.user_metadata?.centerId ?? '',
+    active: isPrimaryAdmin ? true : !user.banned_until,
     createdAt: user.created_at,
     lastSignInAt: user.last_sign_in_at,
     source: 'Supabase',
@@ -101,14 +103,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Ya existe un usuario con ese correo. Editalo o reactivalo desde la lista.' }, { status: 409 })
     }
 
-    const centerId = parsed.data.centerId || (parsed.data.role === 'user' ? (process.env.DEFAULT_CENTER_ID || 'center-neuroplus') : '')
+    const isPrimaryAdmin = isPrimaryAdminEmail(email)
+    const role = isPrimaryAdmin ? 'admin' : 'user'
+    const centerId = isPrimaryAdmin ? '' : (parsed.data.centerId || process.env.DEFAULT_CENTER_ID || 'center-neuroplus')
 
     const user = await createManagedUser({
       id: uuidv4(),
       email,
       name: parsed.data.name,
       passwordHash: hashPassword(parsed.data.password),
-      role: parsed.data.role,
+      role,
       centerId,
       active: true,
     })
@@ -121,7 +125,7 @@ export async function POST(req: Request) {
         email_confirm: true,
         user_metadata: {
           name: parsed.data.name,
-          role: parsed.data.role,
+          role,
           centerId,
         },
       })

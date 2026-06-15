@@ -4,6 +4,7 @@ import { getManagedUserByEmail } from '@/lib/google/sheets'
 import { verifyPassword } from '@/lib/auth/password'
 import { setLocalUserSession } from '@/lib/auth/local-admin-session'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
+import { isPrimaryAdminEmail } from '@/lib/auth/admin'
 
 const ADMIN_EMAIL = 'admin@agendasalud.cl'
 
@@ -36,14 +37,14 @@ export async function POST(req: Request) {
   try {
     const user = await getManagedUserByEmail(email)
     if (user && verifyPassword(password, user.passwordHash)) {
-      if (user.role === 'admin') {
+      if (isPrimaryAdminEmail(user.email)) {
         const response = NextResponse.json({ ok: true, role: 'admin' })
         await setLocalAdminSession(response)
         return response
       }
       const centerId = user.centerId || process.env.DEFAULT_CENTER_ID || 'center-neuroplus'
-      const response = NextResponse.json({ ok: true, role: user.role })
-      await setLocalUserSession(response, { email: user.email, name: user.name, role: user.role, centerId })
+      const response = NextResponse.json({ ok: true, role: 'user' })
+      await setLocalUserSession(response, { email: user.email, name: user.name, role: 'user', centerId })
       return response
     }
   } catch {

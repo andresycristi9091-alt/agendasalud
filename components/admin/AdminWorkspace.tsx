@@ -78,6 +78,11 @@ const emptyProfessional = {
 }
 
 const emptyUserEditForm = { email: '', password: '', name: '', role: 'user' as 'admin' | 'user', centerId: '', active: true }
+const PRIMARY_ADMIN_EMAIL = 'admin@agendasalud.cl'
+
+function isPrimaryAdmin(user?: { email?: string } | null) {
+  return String(user?.email ?? '').trim().toLowerCase() === PRIMARY_ADMIN_EMAIL
+}
 
 export function AdminWorkspace() {
   const [centers, setCenters] = useState<HealthCenter[]>([])
@@ -371,6 +376,11 @@ export function AdminWorkspace() {
   }
 
   async function setUserActive(user: ManagedUser, active: boolean) {
+    if (isPrimaryAdmin(user)) {
+      setUserMessage('El administrador principal no se puede desactivar.')
+      return
+    }
+
     const response = await fetch(`/api/admin/users/${user.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -386,6 +396,11 @@ export function AdminWorkspace() {
   }
 
   async function deleteUser(user: ManagedUser) {
+    if (isPrimaryAdmin(user)) {
+      setUserMessage('El administrador principal no se puede eliminar.')
+      return
+    }
+
     if (!window.confirm(`Eliminar definitivamente a ${user.email}? Esta accion no se puede deshacer.`)) return
 
     const response = await fetch(`/api/admin/users/${user.id}?hard=true`, { method: 'DELETE' })
@@ -711,10 +726,9 @@ export function AdminWorkspace() {
                   {showPassword ? 'Ocultar' : 'Ver'}
                 </button>
               </div>
-              <select value={userForm.role} onChange={(e) => setUserForm((v) => ({ ...v, role: e.target.value as 'admin' | 'user' }))} className={inputClass}>
-                <option value="user">Usuario</option>
-                <option value="admin">Admin</option>
-              </select>
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800">
+                Rol: Usuario operativo. El unico administrador del sistema es {PRIMARY_ADMIN_EMAIL}.
+              </div>
               <select value={userForm.centerId} onChange={(e) => setUserForm((v) => ({ ...v, centerId: e.target.value }))} className={`${inputClass} lg:col-span-2`}>
                 <option value="">Sin centro / todos si es Admin</option>
                 {centers.map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}
@@ -770,6 +784,7 @@ export function AdminWorkspace() {
                     className={inputClass}
                     placeholder="Email"
                     type="email"
+                    disabled={isPrimaryAdmin(selectedUser)}
                     required
                   />
                   <div className="relative">
@@ -789,11 +804,10 @@ export function AdminWorkspace() {
                       {showEditPassword ? 'Ocultar' : 'Ver'}
                     </button>
                   </div>
-                  <select value={userEditForm.role} onChange={(e) => setUserEditForm((v) => ({ ...v, role: e.target.value as 'admin' | 'user' }))} className={inputClass}>
-                    <option value="user">Usuario</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                  <select value={userEditForm.centerId} onChange={(e) => setUserEditForm((v) => ({ ...v, centerId: e.target.value }))} className={inputClass}>
+                  <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm font-bold text-blue-800">
+                    Rol: {isPrimaryAdmin(selectedUser) ? 'Administrador principal protegido' : 'Usuario operativo'}
+                  </div>
+                  <select value={userEditForm.centerId} onChange={(e) => setUserEditForm((v) => ({ ...v, centerId: e.target.value }))} className={inputClass} disabled={isPrimaryAdmin(selectedUser)}>
                     <option value="">Sin centro / todos si es Admin</option>
                     {centers.map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}
                   </select>
@@ -802,6 +816,7 @@ export function AdminWorkspace() {
                       type="checkbox"
                       checked={userEditForm.active}
                       onChange={(e) => setUserEditForm((v) => ({ ...v, active: e.target.checked }))}
+                      disabled={isPrimaryAdmin(selectedUser)}
                       className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                     Usuario activo
@@ -810,10 +825,10 @@ export function AdminWorkspace() {
 
                 <div className="mt-4 grid gap-2 sm:grid-cols-3">
                   <button className="h-12 rounded-2xl bg-blue-600 text-sm font-black text-white">Guardar cambios</button>
-                  <button type="button" onClick={() => setUserActive(selectedUser, !selectedUser.active)} className="h-12 rounded-2xl border border-amber-200 bg-white text-sm font-black text-amber-700">
+                  <button type="button" onClick={() => setUserActive(selectedUser, !selectedUser.active)} disabled={isPrimaryAdmin(selectedUser)} className="h-12 rounded-2xl border border-amber-200 bg-white text-sm font-black text-amber-700 disabled:cursor-not-allowed disabled:opacity-50">
                     {selectedUser.active ? 'Desactivar' : 'Reactivar'}
                   </button>
-                  <button type="button" onClick={() => deleteUser(selectedUser)} className="h-12 rounded-2xl border border-red-200 bg-white text-sm font-black text-red-600">
+                  <button type="button" onClick={() => deleteUser(selectedUser)} disabled={isPrimaryAdmin(selectedUser)} className="h-12 rounded-2xl border border-red-200 bg-white text-sm font-black text-red-600 disabled:cursor-not-allowed disabled:opacity-50">
                     Eliminar definitivo
                   </button>
                 </div>
@@ -827,7 +842,7 @@ export function AdminWorkspace() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-black text-slate-950">{user.name || <span className="italic text-slate-400">Sin nombre</span>}</p>
                       <span className={`rounded-full px-2 py-1 text-[11px] font-black uppercase tracking-[0.12em] ${user.active ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {user.active ? 'Activo' : 'Inactivo'}
+                        {isPrimaryAdmin(user) ? 'Admin principal' : user.active ? 'Activo' : 'Inactivo'}
                       </span>
                     </div>
                     <p className="text-sm text-slate-500">{user.email}</p>
@@ -835,10 +850,10 @@ export function AdminWorkspace() {
                   </div>
                   <div className="grid gap-2 sm:grid-cols-3">
                     <button type="button" onClick={() => setSelectedUserId(user.id)} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">Editar</button>
-                    <button type="button" onClick={() => setUserActive(user, !user.active)} className="rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs font-black text-amber-700">
+                    <button type="button" onClick={() => setUserActive(user, !user.active)} disabled={isPrimaryAdmin(user)} className="rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs font-black text-amber-700 disabled:cursor-not-allowed disabled:opacity-50">
                       {user.active ? 'Desactivar' : 'Reactivar'}
                     </button>
-                    <button type="button" onClick={() => deleteUser(user)} className="rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-black text-red-600">Eliminar</button>
+                    <button type="button" onClick={() => deleteUser(user)} disabled={isPrimaryAdmin(user)} className="rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-black text-red-600 disabled:cursor-not-allowed disabled:opacity-50">Eliminar</button>
                   </div>
                 </div>
               ))}

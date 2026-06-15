@@ -278,14 +278,20 @@ export function PublicBookingPage({ slug }: { slug: string }) {
         </div>
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
-          <BookingSummary
-            professional={professional}
-            selectedDate={selectedDate}
-            selectedSlot={selectedSlot}
-            availableCount={availableSlots.length}
-          />
+          <div className="space-y-4">
+            <BookingSummary
+              professional={professional}
+              selectedDate={selectedDate}
+              selectedSlot={selectedSlot}
+              availableCount={availableSlots.length}
+            />
+            <ServiceDetails professional={professional} />
+            <TrustAndPolicy />
+          </div>
         </aside>
       </section>
+
+      <BookingFAQ />
 
       <PublicTrustFooter />
     </main>
@@ -350,7 +356,7 @@ function Progress({ step }: { step: Step }) {
                   done ? 'bg-emerald-500 text-white' : active ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400',
                 ].join(' ')}
               >
-                {done ? 'OK' : index + 1}
+                {done ? <CheckIcon /> : index + 1}
               </div>
               <span aria-current={active ? 'step' : undefined} className={active ? 'text-sm font-black text-slate-900' : 'text-sm font-semibold text-slate-400'}>
                 {item.label}
@@ -739,6 +745,87 @@ function BookingSummary({
         <p className="mt-1 text-xs leading-5 text-emerald-700">Confirmacion sujeta a disponibilidad al momento de reservar.</p>
       </div>
     </div>
+  )
+}
+
+function ServiceDetails({ professional }: { professional: Professional }) {
+  return (
+    <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)]">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Ficha de atencion</p>
+      <div className="mt-4 space-y-4">
+        <SummaryRow label="Servicio" value={`Consulta con ${professional.professionalType || professional.specialty}`} />
+        <SummaryRow label="Modalidad" value="Presencial o segun indique el centro" />
+        <SummaryRow label="Zona horaria" value="America/Santiago" />
+        <SummaryRow label="Costo" value="Informado por el centro de salud" />
+      </div>
+      <p className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-3 text-xs font-semibold leading-5 text-blue-800">
+        Esta reserva no reemplaza una urgencia. Si tienes sintomas graves o riesgo vital, contacta servicios de emergencia.
+      </p>
+    </div>
+  )
+}
+
+function TrustAndPolicy() {
+  return (
+    <div className="rounded-[28px] border border-emerald-200 bg-emerald-50 p-5">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Confianza y privacidad</p>
+      <ul className="mt-4 space-y-3 text-sm font-semibold leading-6 text-emerald-900">
+        <li className="flex gap-2"><CheckBullet /><span>Conexion segura HTTPS.</span></li>
+        <li className="flex gap-2"><CheckBullet /><span>Datos usados solo para gestionar tu hora.</span></li>
+        <li className="flex gap-2"><CheckBullet /><span>Confirmacion enviada al correo ingresado.</span></li>
+        <li className="flex gap-2"><CheckBullet /><span>Para cambiar o cancelar, contacta al centro con los datos de confirmacion.</span></li>
+      </ul>
+    </div>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M4 10.4L8 14L16 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function CheckBullet() {
+  return (
+    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white" aria-hidden="true">
+      <CheckIcon />
+    </span>
+  )
+}
+
+function BookingFAQ() {
+  const faqs = [
+    {
+      q: 'La hora queda confirmada inmediatamente?',
+      a: 'Si el horario sigue disponible al confirmar, la cita queda registrada y el centro recibe la solicitud automaticamente.',
+    },
+    {
+      q: 'Puedo reagendar o cancelar?',
+      a: 'Si necesitas cambiar tu hora, usa la informacion enviada por correo o contacta directamente al centro.',
+    },
+    {
+      q: 'Debo ingresar antecedentes clinicos?',
+      a: 'No. En esta version solo pedimos datos de contacto y un motivo breve opcional.',
+    },
+  ]
+
+  return (
+    <section className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
+      <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_18px_55px_rgba(15,23,42,0.06)]">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Preguntas frecuentes</p>
+        <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Antes de confirmar tu hora</h2>
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {faqs.map((faq) => (
+            <div key={faq.q} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <h3 className="text-sm font-black text-slate-950">{faq.q}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-500">{faq.a}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   )
 }
 

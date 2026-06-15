@@ -52,6 +52,11 @@ Ultimo foco implementado:
   - Cliente = paciente/persona que solicita hora.
   - Profesional = usuario que administra su agenda, disponibilidad, citas y estadisticas.
   - Administrador = usuario que administra centros, usuarios, profesionales y estadisticas globales.
+- Regla critica de administracion:
+  - El unico administrador real del sistema es `admin@agendasalud.cl`.
+  - Aunque Google Sheets o Supabase contengan otro usuario con rol `admin`, backend y login lo degradan a usuario operativo.
+  - `admin@agendasalud.cl` no se puede desactivar ni eliminar desde API ni desde UI.
+  - El panel Admin ya no permite crear nuevos administradores; solo usuarios operativos asignables a centros.
 - Dashboard profesional modernizado:
   - Entrada como centro de mando de jornada.
   - Selector de fecha de trabajo.
@@ -119,6 +124,12 @@ Ultimo foco implementado:
   - Tarjetas grandes con imagen/foto o avatar visual.
   - Al seleccionar un profesional aparece panel lateral con resumen y CTA `Ingresar a la agenda`.
   - El flujo directo `/agendar/[slug]` se mantiene intacto.
+- Pagina publica `/agendar/[slug]` alineada con buenas practicas de conversion:
+  - Calendario y progreso por pasos: Fecha, Horario, Datos.
+  - Ficha de atencion visible: servicio, modalidad, zona horaria y costo informado por centro.
+  - Bloque de confianza/privacidad: HTTPS, uso acotado de datos, confirmacion y politica de cambios.
+  - FAQ final para resolver dudas antes de confirmar.
+  - Recordatorio visible: no ingresar datos clinicos sensibles y no usar el flujo para urgencias.
 - Hotfix produccion:
   - `ADMIN_SESSION_SECRET` ya no provoca 500 si falta; usa fallback estable para no romper `/dashboard`.
   - `ADMIN_EMAILS` ya no provoca 500 si falta; retorna lista vacia y respeta `user_metadata.role`.

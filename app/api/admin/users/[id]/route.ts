@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createAdminSupabaseClient, requireAdmin } from '@/lib/auth/admin'
+import { createAdminSupabaseClient, isPrimaryAdminEmail, requireAdmin } from '@/lib/auth/admin'
 import { AdminUserUpdateSchema } from '@/lib/validation'
 import { hashPassword } from '@/lib/auth/password'
 import { deleteManagedUser, getManagedUsers, updateManagedUser } from '@/lib/google/sheets'
@@ -49,6 +49,18 @@ export async function PATCH(
     const managedUser = users.find((user) => user.id === id)
 
     if (managedUser) {
+      const requestedEmail = parsed.data.email?.toLowerCase() ?? managedUser.email.toLowerCase()
+      const isPrimaryAdmin = isPrimaryAdminEmail(requestedEmail)
+      const wasPrimaryAdmin = isPrimaryAdminEmail(managedUser.email)
+
+      if (wasPrimaryAdmin && requestedEmail !== managedUser.email.toLowerCase()) {
+        return NextResponse.json({ error: 'No se puede cambiar el correo del administrador principal.' }, { status: 403 })
+      }
+
+      if (!wasPrimaryAdmin && isPrimaryAdmin) {
+        return NextResponse.json({ error: 'Ese correo esta reservado para el administrador principal.' }, { status: 403 })
+      }
+
       if (parsed.data.email) {
         const duplicate = users.some((user) =>
           user.id !== id &&
@@ -60,24 +72,24 @@ export async function PATCH(
       }
 
       const updated = await updateManagedUser(id, {
-        email: parsed.data.email?.toLowerCase(),
+        email: requestedEmail,
         name: parsed.data.name,
-        role: parsed.data.role,
-        centerId: parsed.data.centerId,
-        active: parsed.data.active,
+        role: isPrimaryAdmin ? 'admin' : 'user',
+        centerId: isPrimaryAdmin ? '' : parsed.data.centerId,
+        active: isPrimaryAdmin ? true : parsed.data.active,
         ...(parsed.data.password ? { passwordHash: hashPassword(parsed.data.password) } : {}),
       })
 
       await syncSupabaseUserByEmail(managedUser.email, {
-        ...(parsed.data.email ? { email: parsed.data.email.toLowerCase() } : {}),
+        ...(parsed.data.email ? { email: requestedEmail } : {}),
         ...(parsed.data.password ? { password: parsed.data.password } : {}),
         user_metadata: {
-          ...(parsed.data.role ? { role: parsed.data.role } : {}),
+          role: isPrimaryAdmin ? 'admin' : 'user',
           ...(parsed.data.name ? { name: parsed.data.name } : {}),
-          ...(parsed.data.centerId !== undefined ? { centerId: parsed.data.centerId } : {}),
+          centerId: isPrimaryAdmin ? '' : (parsed.data.centerId ?? managedUser.centerId),
         },
-        ...(parsed.data.active === false ? { ban_duration: '876000h' } : {}),
-        ...(parsed.data.active === true ? { ban_duration: 'none' } : {}),
+        ...(isPrimaryAdmin || parsed.data.active === true ? { ban_duration: 'none' } : {}),
+        ...(!isPrimaryAdmin && parsed.data.active === false ? { ban_duration: '876000h' } : {}),
       })
 
       return NextResponse.json({
@@ -85,9 +97,9 @@ export async function PATCH(
           id: updated.id,
           email: updated.email,
           name: updated.name,
-          role: updated.role,
-          centerId: updated.centerId,
-          active: updated.active,
+          role: isPrimaryAdmin ? 'admin' : 'user',
+          centerId: isPrimaryAdmin ? '' : updated.centerId,
+          active: isPrimaryAdmin ? true : updated.active,
           source: 'AgendaSalud',
         },
       })
@@ -107,13 +119,27 @@ export async function PATCH(
       user_metadata: {},
     }
 
-    if (parsed.data.email) payload.email = parsed.data.email.toLowerCase()
+    const requestedEmail = parsed.data.email?.toLowerCase()
+    const supabaseUser = await supabase.auth.admin.getUserById(id)
+    const finalEmail = requestedEmail ?? supabaseUser.data.user?.email ?? ''
+    const isPrimaryAdmin = isPrimaryAdminEmail(finalEmail)
+    const wasPrimaryAdmin = isPrimaryAdminEmail(supabaseUser.data.user?.email)
+
+    if (wasPrimaryAdmin && requestedEmail && requestedEmail !== supabaseUser.data.user?.email?.toLowerCase()) {
+      return NextResponse.json({ error: 'No se puede cambiar el correo del administrador principal.' }, { status: 403 })
+    }
+
+    if (!wasPrimaryAdmin && isPrimaryAdmin) {
+      return NextResponse.json({ error: 'Ese correo esta reservado para el administrador principal.' }, { status: 403 })
+    }
+
+    if (parsed.data.email) payload.email = requestedEmail
     if (parsed.data.password) payload.password = parsed.data.password
-    if (parsed.data.role) payload.user_metadata!.role = parsed.data.role
+    payload.user_metadata!.role = isPrimaryAdmin ? 'admin' : 'user'
     if (parsed.data.name) payload.user_metadata!.name = parsed.data.name
-    if (parsed.data.centerId !== undefined) payload.user_metadata!.centerId = parsed.data.centerId
-    if (parsed.data.active === false) payload.ban_duration = '876000h'
-    if (parsed.data.active === true) payload.ban_duration = 'none'
+    payload.user_metadata!.centerId = isPrimaryAdmin ? '' : (parsed.data.centerId ?? '')
+    if (isPrimaryAdmin || parsed.data.active === true) payload.ban_duration = 'none'
+    if (!isPrimaryAdmin && parsed.data.active === false) payload.ban_duration = '876000h'
 
     const { data, error } = await supabase.auth.admin.updateUserById(id, payload)
     if (error) throw error
@@ -123,9 +149,9 @@ export async function PATCH(
         id: data.user.id,
         email: data.user.email,
         name: data.user.user_metadata?.name ?? '',
-        role: data.user.user_metadata?.role ?? 'user',
-        centerId: data.user.user_metadata?.centerId ?? '',
-        active: !data.user.banned_until,
+        role: isPrimaryAdmin ? 'admin' : 'user',
+        centerId: isPrimaryAdmin ? '' : data.user.user_metadata?.centerId ?? '',
+        active: isPrimaryAdmin ? true : !data.user.banned_until,
         source: 'Supabase',
       },
     })
@@ -148,6 +174,10 @@ export async function DELETE(
     const managedUser = users.find((user) => user.id === id)
 
     if (managedUser) {
+      if (isPrimaryAdminEmail(managedUser.email)) {
+        return NextResponse.json({ error: 'El administrador principal no se puede eliminar ni desactivar.' }, { status: 403 })
+      }
+
       if (hardDelete) {
         await deleteManagedUser(id)
       } else {
@@ -173,6 +203,10 @@ export async function DELETE(
     }
 
     const supabase = createAdminSupabaseClient()
+    const supabaseUser = await supabase.auth.admin.getUserById(id)
+    if (isPrimaryAdminEmail(supabaseUser.data.user?.email)) {
+      return NextResponse.json({ error: 'El administrador principal no se puede eliminar ni desactivar.' }, { status: 403 })
+    }
     const { error } = hardDelete
       ? await supabase.auth.admin.deleteUser(id)
       : await supabase.auth.admin.updateUserById(id, { ban_duration: '876000h' })
