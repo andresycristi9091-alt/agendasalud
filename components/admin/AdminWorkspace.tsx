@@ -519,7 +519,7 @@ export function AdminWorkspace() {
                       <p className="text-xs text-slate-400">{centers.find((center) => center.id === professional.centerId)?.name ?? 'Sin centro'}</p>
                     </div>
                   </div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <div className="mt-3 grid gap-2 sm:grid-cols-4">
                     <button
                       type="button"
                       onClick={() => editProfessional(professional.id)}
@@ -533,7 +533,26 @@ export function AdminWorkspace() {
                     ) : (
                       <button type="button" onClick={() => reactivateProfessional(professional.id)} className="rounded-xl border border-emerald-200 bg-white px-3 py-3 text-xs font-black text-emerald-700 transition hover:bg-emerald-50">Reactivar</button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => deleteProfessional(professional.id)}
+                      className={`rounded-xl border px-3 py-3 text-xs font-black transition ${
+                        pendingDeleteProfessionalId === professional.id
+                          ? 'border-red-500 bg-red-600 text-white hover:bg-red-700'
+                          : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
+                      }`}
+                    >
+                      {pendingDeleteProfessionalId === professional.id ? 'Confirmar' : 'Eliminar'}
+                    </button>
                   </div>
+                  {pendingDeleteProfessionalId === professional.id && (
+                    <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700">
+                      Presiona Confirmar para eliminar el registro. Si Google Sheets no permite borrar la fila, quedara fuera del directorio publico.
+                      <button type="button" onClick={() => setPendingDeleteProfessionalId('')} className="ml-2 underline">
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
 
                   {selectedProfessionalId === professional.id && (
                     <div className="mt-4 rounded-3xl border border-blue-100 bg-white p-4 shadow-sm">

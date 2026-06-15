@@ -78,6 +78,7 @@ Ultimo foco implementado:
   - Los profesionales inactivos se muestran con estado `Inactivo` y boton `Reactivar`.
   - Al pinchar `Editar` en una tarjeta de profesional, se despliega un panel inline debajo de esa tarjeta con pestañas `Registro`, `Agenda` y `Eliminar`.
   - La pestaña `Eliminar` incluye `Quitar del directorio publico` y `Eliminar registro`.
+  - Cada tarjeta del directorio muestra siempre el boton directo `Eliminar`, junto a `Editar`, `Ver` y `Reactivar/Quitar`.
   - `DELETE /api/admin/professionals/[id]` desactiva; `DELETE /api/admin/professionals/[id]?hard=true` intenta eliminar la fila.
   - Si Google Sheets falla al borrar la fila, la API desactiva el profesional como fallback para sacarlo del directorio publico.
 - Admin / usuarios:
