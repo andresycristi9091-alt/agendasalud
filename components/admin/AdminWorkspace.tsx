@@ -310,7 +310,7 @@ export function AdminWorkspace() {
     setPendingDeleteProfessionalId('')
     setProfessionalEditTab('registro')
     setSelectedProfessionalId(id)
-    setShowEditModal(true)
+    setShowEditModal(false)
     setMessage(null)
   }
 
@@ -534,6 +534,110 @@ export function AdminWorkspace() {
                       <button type="button" onClick={() => reactivateProfessional(professional.id)} className="rounded-xl border border-emerald-200 bg-white px-3 py-3 text-xs font-black text-emerald-700 transition hover:bg-emerald-50">Reactivar</button>
                     )}
                   </div>
+
+                  {selectedProfessionalId === professional.id && (
+                    <div className="mt-4 rounded-3xl border border-blue-100 bg-white p-4 shadow-sm">
+                      <div className="mb-4 grid gap-2 sm:grid-cols-3">
+                        {([
+                          { id: 'registro', label: 'Registro' },
+                          { id: 'agenda', label: 'Agenda' },
+                          { id: 'eliminar', label: 'Eliminar' },
+                        ] as const).map((tab) => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setProfessionalEditTab(tab.id)}
+                            className={`h-11 rounded-xl text-xs font-black transition ${
+                              professionalEditTab === tab.id
+                                ? tab.id === 'eliminar'
+                                  ? 'bg-red-600 text-white'
+                                  : 'bg-blue-600 text-white'
+                                : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <form onSubmit={submitProfessional} className="space-y-3">
+                        {professionalEditTab === 'registro' && (
+                          <>
+                            <select value={professionalForm.centerId} onChange={(e) => updateProfessionalForm('centerId', e.target.value)} className={inputClass}>
+                              <option value="">Seleccionar centro</option>
+                              {centers.filter((center) => center.active).map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}
+                            </select>
+                            <input value={professionalForm.name} onChange={(e) => updateProfessionalForm('name', e.target.value)} className={inputClass} placeholder="Nombre profesional" required />
+                            <input value={professionalForm.slug} onChange={(e) => updateProfessionalForm('slug', slugify(e.target.value))} className={inputClass} placeholder="slug-publico" required />
+                            <input value={professionalForm.professionalType} onChange={(e) => updateProfessionalForm('professionalType', e.target.value)} className={inputClass} placeholder="Tipo de profesional" />
+                            <input value={professionalForm.specialty} onChange={(e) => updateProfessionalForm('specialty', e.target.value)} className={inputClass} placeholder="Especialidad" required />
+                            <input value={professionalForm.photoUrl} onChange={(e) => updateProfessionalForm('photoUrl', e.target.value)} className={inputClass} placeholder="URL fotografia" />
+                            <textarea value={professionalForm.publicDescription} onChange={(e) => updateProfessionalForm('publicDescription', e.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="Descripcion publica" />
+                            <button disabled={isPending} className="h-12 w-full rounded-2xl bg-blue-600 text-sm font-black text-white disabled:opacity-50">
+                              {isPending ? 'Guardando...' : 'Guardar registro'}
+                            </button>
+                          </>
+                        )}
+
+                        {professionalEditTab === 'agenda' && (
+                          <>
+                            <input value={professionalForm.email} onChange={(e) => updateProfessionalForm('email', e.target.value)} className={inputClass} placeholder="Correo profesional" />
+                            <input value={professionalForm.phone} onChange={(e) => updateProfessionalForm('phone', e.target.value)} className={inputClass} placeholder="Telefono" />
+                            <input value={professionalForm.calendarId} onChange={(e) => updateProfessionalForm('calendarId', e.target.value)} className={inputClass} placeholder="Calendar ID opcional" />
+                            <select value={professionalForm.appointmentDurationDefault} onChange={(e) => updateProfessionalForm('appointmentDurationDefault', Number(e.target.value))} className={inputClass}>
+                              <option value={10}>10 minutos por cita</option>
+                              <option value={15}>15 minutos por cita</option>
+                              <option value={30}>30 minutos por cita</option>
+                              <option value={45}>45 minutos por cita</option>
+                              <option value={60}>1 hora por cita</option>
+                            </select>
+                            <select value={professionalForm.timezone} onChange={(e) => updateProfessionalForm('timezone', e.target.value)} className={inputClass}>
+                              <option value="America/Santiago">America/Santiago</option>
+                            </select>
+                            <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-700">
+                              <input
+                                type="checkbox"
+                                checked={professionalForm.active}
+                                onChange={(e) => updateProfessionalForm('active', e.target.checked)}
+                                className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              Visible para agendamiento publico
+                            </label>
+                            <button disabled={isPending} className="h-12 w-full rounded-2xl bg-blue-600 text-sm font-black text-white disabled:opacity-50">
+                              {isPending ? 'Guardando...' : 'Guardar agenda'}
+                            </button>
+                          </>
+                        )}
+
+                        {professionalEditTab === 'eliminar' && (
+                          <div className="space-y-3">
+                            <button
+                              type="button"
+                              onClick={() => professional.active && deactivateProfessional(professional.id)}
+                              disabled={!professional.active}
+                              className="h-12 w-full rounded-2xl border border-amber-200 bg-amber-50 text-sm font-black text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {professional.active ? 'Quitar del directorio publico' : 'Ya esta fuera del directorio'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteProfessional(professional.id)}
+                              className={`h-12 w-full rounded-2xl border text-sm font-black transition ${
+                                pendingDeleteProfessionalId === professional.id
+                                  ? 'border-red-500 bg-red-600 text-white hover:bg-red-700'
+                                  : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
+                              }`}
+                            >
+                              {pendingDeleteProfessionalId === professional.id ? 'Confirmar eliminacion definitiva' : 'Eliminar registro'}
+                            </button>
+                            <button type="button" onClick={clearProfessionalEdit} className="h-11 w-full rounded-2xl border border-slate-200 bg-white text-sm font-black text-slate-600">
+                              Cerrar edicion
+                            </button>
+                          </div>
+                        )}
+                      </form>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

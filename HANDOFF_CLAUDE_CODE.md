@@ -76,7 +76,8 @@ Ultimo foco implementado:
   - El boton `Quitar del directorio` deja al profesional fuera del agendamiento publico sin borrar el registro.
   - El boton `Eliminar registro` intenta borrar el registro administrativo con confirmacion inline y sin `window.confirm`.
   - Los profesionales inactivos se muestran con estado `Inactivo` y boton `Reactivar`.
-  - `Eliminar registro` aparece como una fila roja separada dentro de cada tarjeta, incluso si el profesional esta inactivo, y tambien en el formulario de edicion.
+  - Al pinchar `Editar` en una tarjeta de profesional, se despliega un panel inline debajo de esa tarjeta con pestañas `Registro`, `Agenda` y `Eliminar`.
+  - La pestaña `Eliminar` incluye `Quitar del directorio publico` y `Eliminar registro`.
   - `DELETE /api/admin/professionals/[id]` desactiva; `DELETE /api/admin/professionals/[id]?hard=true` intenta eliminar la fila.
   - Si Google Sheets falla al borrar la fila, la API desactiva el profesional como fallback para sacarlo del directorio publico.
 - Admin / usuarios:
