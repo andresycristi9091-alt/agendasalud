@@ -798,6 +798,84 @@ export async function logReminderSent(appointmentId: string, type: '24h' | '2h')
   await appendRow('remindersSent!A:D', [id, appointmentId, type, now])
 }
 
+// ── Password resets ─────────────────────────────────────────
+export type PasswordResetRecord = {
+  id: string
+  email: string
+  tokenHash: string
+  expiresAt: string
+  usedAt: string
+  createdAt: string
+}
+
+const PASSWORD_RESET_HEADERS = ['id', 'email', 'tokenHash', 'expiresAt', 'usedAt', 'createdAt']
+
+function rowToPasswordReset(row: string[]): PasswordResetRecord {
+  return {
+    id: row[0] ?? '',
+    email: row[1] ?? '',
+    tokenHash: row[2] ?? '',
+    expiresAt: row[3] ?? '',
+    usedAt: row[4] ?? '',
+    createdAt: row[5] ?? '',
+  }
+}
+
+export async function createPasswordReset(data: Omit<PasswordResetRecord, 'createdAt'>): Promise<void> {
+  await ensureSheet('passwordResets', PASSWORD_RESET_HEADERS)
+  await appendRow('passwordResets!A:F', [
+    data.id,
+    data.email,
+    data.tokenHash,
+    data.expiresAt,
+    data.usedAt,
+    new Date().toISOString(),
+  ])
+}
+
+export async function getPasswordResetByTokenHash(tokenHash: string): Promise<PasswordResetRecord | null> {
+  const rows = await getSheetData('passwordResets!A:F').catch(() => [])
+  if (rows.length < 2) return null
+  const match = rows.slice(1).find((row) => row[2] === tokenHash)
+  return match ? rowToPasswordReset(match) : null
+}
+
+export async function markPasswordResetUsed(id: string): Promise<void> {
+  const rows = await getSheetData('passwordResets!A:F')
+  const rowIndex = rows.findIndex((row, index) => index > 0 && row[0] === id)
+  if (rowIndex === -1) return
+
+  await getSheetsClient().spreadsheets.values.update({
+    spreadsheetId: SHEET_ID,
+    range: `passwordResets!E${rowIndex + 1}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [[new Date().toISOString()]] },
+  })
+}
+
+export async function invalidatePasswordResets(email: string): Promise<void> {
+  const rows = await getSheetData('passwordResets!A:F').catch(() => [])
+  if (rows.length < 2) return
+
+  const normalized = email.trim().toLowerCase()
+  const now = new Date().toISOString()
+  const sheets = getSheetsClient()
+
+  for (let index = 1; index < rows.length; index += 1) {
+    const row = rows[index]
+    const rowEmail = (row[1] ?? '').trim().toLowerCase()
+    const usedAt = row[4] ?? ''
+    if (rowEmail === normalized && !usedAt) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID,
+        range: `passwordResets!E${index + 1}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[now]] },
+      })
+    }
+  }
+}
+
 export async function getAppointmentsByPatientEmail(email: string): Promise<Appointment[]> {
   const rows = await getSheetData('appointments!A:Q')
   if (rows.length < 2) return []

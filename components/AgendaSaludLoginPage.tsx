@@ -230,6 +230,11 @@ export default function AgendaSaludLoginPage() {
                     <button type="submit" disabled={loading} className="group mt-2 flex h-14 w-full items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563EB_0%,#0891B2_50%,#10B981_100%)] px-5 text-base font-black text-white shadow-[0_18px_40px_rgba(37,99,235,0.24)] transition hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60">
                       {loading ? 'Ingresando...' : <>Ingresar al panel<span className="ml-2 transition group-hover:translate-x-1">→</span></>}
                     </button>
+                    <p className="text-center text-sm text-slate-500">
+                      <a href="/recuperar-contrasena" className="font-black text-blue-700 transition hover:text-blue-800">
+                        Olvidaste tu contrasena?
+                      </a>
+                    </p>
                   </form>
                 )}
 

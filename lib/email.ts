@@ -393,6 +393,79 @@ function buildReminderHtml(params: ReminderEmailParams): string {
 </html>`
 }
 
+type PasswordResetEmailParams = {
+  name: string
+  email: string
+  resetUrl: string
+  ttlMinutes: number
+}
+
+function buildPasswordResetHtml(params: PasswordResetEmailParams): string {
+  return `<!DOCTYPE html>
+<html lang="es">
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden;">
+        <tr><td style="background:linear-gradient(135deg,#2563EB 0%,#0891B2 100%);padding:28px 32px;">
+          <p style="margin:0;color:#ffffff;font-size:20px;font-weight:900;">AgendaSalud</p>
+          <p style="margin:6px 0 0;color:#dbeafe;font-size:14px;">Restablecer contrasena</p>
+        </td></tr>
+        <tr><td style="padding:28px 32px;">
+          <p style="margin:0 0 12px;color:#0f172a;font-size:15px;">Hola ${params.name || 'usuario'},</p>
+          <p style="margin:0 0 20px;color:#475569;font-size:14px;line-height:22px;">
+            Recibimos una solicitud para restablecer tu contrasena de AgendaSalud.
+            Este enlace es valido por ${params.ttlMinutes} minutos y solo puede usarse una vez.
+          </p>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 20px;">
+            <tr><td style="border-radius:12px;background:#2563EB;">
+              <a href="${params.resetUrl}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:900;text-decoration:none;">Crear nueva contrasena</a>
+            </td></tr>
+          </table>
+          <p style="margin:0;color:#94a3b8;font-size:12px;line-height:20px;">
+            Si no solicitaste este cambio, ignora este correo: tu contrasena actual seguira funcionando.
+            Por seguridad, nunca compartas este enlace.
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 32px;border-top:1px solid #f1f5f9;text-align:center;">
+          <p style="margin:0;color:#94a3b8;font-size:12px;">AgendaSalud &middot; Plataforma de agendamiento medico</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+}
+
+export async function sendPasswordResetEmail(params: PasswordResetEmailParams): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    console.warn('[email] RESEND_API_KEY no configurado. Reset no enviado a', params.email)
+    return
+  }
+
+  const from = process.env.EMAIL_FROM ?? 'AgendaSalud <noreply@agendasalud.cl>'
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from,
+        to: [params.email],
+        subject: 'Restablece tu contrasena de AgendaSalud',
+        html: buildPasswordResetHtml(params),
+      }),
+    })
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '')
+      console.error('[email] Error enviando reset de contrasena:', response.status, detail)
+    }
+  } catch (error) {
+    console.error('[email] Error de red al enviar reset de contrasena:', error)
+  }
+}
+
 export async function sendReminderEmail(params: ReminderEmailParams): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
