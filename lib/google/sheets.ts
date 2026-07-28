@@ -61,8 +61,22 @@ export type ManagedUser = {
   email: string
   name: string
   passwordHash: string
-  role: 'admin' | 'user'
+  role: 'super_admin' | 'center_admin' | 'professional' | 'patient'
   centerId: string
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type Patient = {
+  id: string
+  name: string
+  email: string
+  phone: string
+  rut: string
+  consentAcceptedAt: string
+  consentVersion: string
+  lastAppointmentAt: string
   active: boolean
   createdAt: string
   updatedAt: string
@@ -413,12 +427,24 @@ export async function updateCenter(id: string, data: Partial<HealthCenter>): Pro
 
 function rowToManagedUser(headers: string[], row: string[]): ManagedUser {
   const mapped = rowToObject<Partial<ManagedUser>>(headers, row)
+  const email = row[1] ?? mapped.email ?? ''
+  const rawRole = String(row[4] ?? mapped.role ?? 'professional').toLowerCase()
+  const role = (() => {
+    if (email.toLowerCase() === 'admin@agendasalud.cl') return 'super_admin'
+    if (rawRole === 'admin') return 'professional'
+    if (rawRole === 'user') return 'professional'
+    if (['super_admin', 'center_admin', 'professional', 'patient'].includes(rawRole)) {
+      return rawRole as ManagedUser['role']
+    }
+    return 'professional'
+  })()
+
   return {
     id: row[0] ?? mapped.id ?? '',
-    email: row[1] ?? mapped.email ?? '',
+    email,
     name: row[2] ?? mapped.name ?? '',
     passwordHash: row[3] ?? mapped.passwordHash ?? '',
-    role: ((row[4] ?? mapped.role ?? 'user') === 'admin' ? 'admin' : 'user'),
+    role,
     centerId: row[5] ?? mapped.centerId ?? '',
     active: String(row[6] ?? mapped.active ?? 'TRUE').toUpperCase() === 'TRUE',
     createdAt: row[7] ?? mapped.createdAt ?? '',
@@ -511,6 +537,134 @@ export async function deleteManagedUser(id: string): Promise<void> {
       }],
     },
   })
+}
+
+// Patients
+const PATIENT_HEADERS = [
+  'id',
+  'name',
+  'email',
+  'phone',
+  'rut',
+  'consentAcceptedAt',
+  'consentVersion',
+  'lastAppointmentAt',
+  'active',
+  'createdAt',
+  'updatedAt',
+]
+
+function rowToPatient(headers: string[], row: string[]): Patient {
+  const mapped = rowToObject<Partial<Patient>>(headers, row)
+  return {
+    id: row[0] ?? mapped.id ?? '',
+    name: row[1] ?? mapped.name ?? '',
+    email: row[2] ?? mapped.email ?? '',
+    phone: row[3] ?? mapped.phone ?? '',
+    rut: row[4] ?? mapped.rut ?? '',
+    consentAcceptedAt: row[5] ?? mapped.consentAcceptedAt ?? '',
+    consentVersion: row[6] ?? mapped.consentVersion ?? 'v1',
+    lastAppointmentAt: row[7] ?? mapped.lastAppointmentAt ?? '',
+    active: String(row[8] ?? mapped.active ?? 'TRUE').toUpperCase() === 'TRUE',
+    createdAt: row[9] ?? mapped.createdAt ?? '',
+    updatedAt: row[10] ?? mapped.updatedAt ?? '',
+  }
+}
+
+export async function getPatients(): Promise<Patient[]> {
+  await ensureSheet('patients', PATIENT_HEADERS)
+  const rows = await getSheetData('patients!A:K')
+  if (rows.length < 2) return []
+  const headers = rows[0]
+  return rows.slice(1).filter((row) => row[0]).map((row) => rowToPatient(headers, row))
+}
+
+export async function getPatientByEmail(email: string): Promise<Patient | null> {
+  const normalizedEmail = email.trim().toLowerCase()
+  const patients = await getPatients()
+  return patients.find((patient) => patient.email.trim().toLowerCase() === normalizedEmail) ?? null
+}
+
+export async function upsertPatientFromAppointment(data: {
+  name: string
+  email: string
+  phone: string
+  rut?: string
+  appointmentDate?: string
+  consentVersion?: string
+}): Promise<Patient> {
+  await ensureSheet('patients', PATIENT_HEADERS)
+  const rows = await getSheetData('patients!A:K')
+  const headers = rows[0] ?? PATIENT_HEADERS
+  const normalizedEmail = data.email.trim().toLowerCase()
+  const rowIndex = rows.findIndex((row, index) => index > 0 && (row[2] ?? '').trim().toLowerCase() === normalizedEmail)
+  const now = new Date().toISOString()
+
+  if (rowIndex === -1) {
+    const patient: Patient = {
+      id: `patient-${Date.now()}`,
+      name: data.name,
+      email: normalizedEmail,
+      phone: data.phone,
+      rut: data.rut ?? '',
+      consentAcceptedAt: now,
+      consentVersion: data.consentVersion ?? 'v1-agendamiento',
+      lastAppointmentAt: data.appointmentDate ?? '',
+      active: true,
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    await appendRow('patients!A:K', [
+      patient.id,
+      patient.name,
+      patient.email,
+      patient.phone,
+      patient.rut,
+      patient.consentAcceptedAt,
+      patient.consentVersion,
+      patient.lastAppointmentAt,
+      patient.active ? 'TRUE' : 'FALSE',
+      patient.createdAt,
+      patient.updatedAt,
+    ])
+    return patient
+  }
+
+  const current = rowToPatient(headers, rows[rowIndex])
+  const updated: Patient = {
+    ...current,
+    name: data.name || current.name,
+    phone: data.phone || current.phone,
+    rut: data.rut ?? current.rut,
+    email: current.email || normalizedEmail,
+    lastAppointmentAt: data.appointmentDate ?? current.lastAppointmentAt,
+    active: true,
+    updatedAt: now,
+  }
+
+  await getSheetsClient().spreadsheets.values.update({
+    spreadsheetId: SHEET_ID,
+    range: `patients!A${rowIndex + 1}:K${rowIndex + 1}`,
+    valueInputOption: 'RAW',
+    requestBody: {
+      values: [[
+        updated.id,
+        updated.name,
+        updated.email,
+        updated.phone,
+        updated.rut,
+        updated.consentAcceptedAt,
+        updated.consentVersion,
+        updated.lastAppointmentAt,
+        updated.active ? 'TRUE' : 'FALSE',
+        updated.createdAt,
+        updated.updatedAt,
+      ]],
+    },
+  })
+
+  return updated
 }
 
 // â”€â”€ Availability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

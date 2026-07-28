@@ -14,7 +14,7 @@ export async function getCurrentUserRole() {
   const localAdminSession = await getLocalAdminSession()
   if (localAdminSession) {
     const isPrimaryAdmin = isPrimaryAdminEmail(localAdminSession.email)
-    const role = isPrimaryAdmin && localAdminSession.role === 'admin' ? 'admin' as const : 'user' as const
+    const role = isPrimaryAdmin && localAdminSession.role === 'super_admin' ? 'super_admin' as const : localAdminSession.role
     return {
       user: {
         id: localAdminSession.email === LOCAL_ADMIN_EMAIL ? 'local-admin' : `local-${localAdminSession.email}`,
@@ -26,7 +26,7 @@ export async function getCurrentUserRole() {
         },
       },
       role,
-      isAdmin: role === 'admin',
+      isAdmin: role === 'super_admin',
     }
   }
 
@@ -42,7 +42,7 @@ export async function getCurrentUserRole() {
 
   return {
     user,
-    role: isAdmin ? 'admin' as const : 'user' as const,
+    role: isAdmin ? 'super_admin' as const : 'professional' as const,
     isAdmin,
   }
 }

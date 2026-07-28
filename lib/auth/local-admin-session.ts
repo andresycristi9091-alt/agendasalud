@@ -4,10 +4,11 @@ import { NextResponse, type NextRequest } from 'next/server'
 export const LOCAL_ADMIN_EMAIL = 'admin@agendasalud.cl'
 const COOKIE_NAME = 'agendasalud_admin_session'
 const SESSION_TTL_SECONDS = 60 * 60 * 8
+export type AppRole = 'super_admin' | 'center_admin' | 'professional' | 'patient'
 
 type LocalAdminPayload = {
   email: string
-  role: 'admin' | 'user'
+  role: AppRole
   name?: string
   centerId?: string
   iat: number
@@ -50,11 +51,11 @@ async function sign(payload: string) {
   return bytesToBase64url(new Uint8Array(signature))
 }
 
-async function createSessionValue(input?: { email?: string; role?: 'admin' | 'user'; name?: string; centerId?: string }) {
+async function createSessionValue(input?: { email?: string; role?: AppRole; name?: string; centerId?: string }) {
   const now = Math.floor(Date.now() / 1000)
   const payload = textToBase64url(JSON.stringify({
     email: input?.email ?? LOCAL_ADMIN_EMAIL,
-    role: input?.role ?? 'admin',
+    role: input?.role ?? 'super_admin',
     name: input?.name ?? '',
     centerId: input?.centerId ?? '',
     iat: now,
@@ -76,7 +77,7 @@ export async function setLocalAdminSession(response: NextResponse) {
 
 export async function setLocalUserSession(
   response: NextResponse,
-  user: { email: string; role: 'admin' | 'user'; name?: string; centerId?: string }
+  user: { email: string; role: AppRole; name?: string; centerId?: string }
 ) {
   response.cookies.set(COOKIE_NAME, await createSessionValue(user), {
     httpOnly: true,
@@ -113,7 +114,7 @@ async function verifySessionValue(value?: string): Promise<LocalAdminPayload | n
     const parsed = JSON.parse(base64urlToText(payload)) as LocalAdminPayload
     const now = Math.floor(Date.now() / 1000)
 
-    if (!parsed.email || !['admin', 'user'].includes(parsed.role) || parsed.exp < now) return null
+    if (!parsed.email || !['super_admin', 'center_admin', 'professional', 'patient'].includes(parsed.role) || parsed.exp < now) return null
     return parsed
   } catch {
     return null

@@ -22,6 +22,7 @@ function getUserCenterId(context: AuthContext) {
 export async function requireDashboardUser() {
   const context = await getCurrentUserRole()
   if (!context.user) throw new Error('No autorizado')
+  if (context.role === 'patient') throw new Error('No autorizado para panel profesional')
   return context
 }
 

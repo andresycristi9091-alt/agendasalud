@@ -40,7 +40,7 @@ type ManagedUser = {
   id: string
   email: string
   name: string
-  role: 'admin' | 'user'
+  role: 'super_admin' | 'center_admin' | 'professional' | 'patient'
   centerId?: string
   active: boolean
   source?: string
@@ -77,11 +77,18 @@ const emptyProfessional = {
   photoUrl: '',
 }
 
-const emptyUserEditForm = { email: '', password: '', name: '', role: 'user' as 'admin' | 'user', centerId: '', active: true }
+const emptyUserEditForm = { email: '', password: '', name: '', role: 'professional' as ManagedUser['role'], centerId: '', active: true }
 const PRIMARY_ADMIN_EMAIL = 'admin@agendasalud.cl'
 
 function isPrimaryAdmin(user?: { email?: string } | null) {
   return String(user?.email ?? '').trim().toLowerCase() === PRIMARY_ADMIN_EMAIL
+}
+
+function roleLabel(role?: ManagedUser['role']) {
+  if (role === 'super_admin') return 'Super Admin'
+  if (role === 'center_admin') return 'Administrador de centro'
+  if (role === 'patient') return 'Paciente'
+  return 'Profesional'
 }
 
 export function AdminWorkspace() {
@@ -97,7 +104,7 @@ export function AdminWorkspace() {
   const [professionalEditTab, setProfessionalEditTab] = useState<'registro' | 'agenda' | 'eliminar'>('registro')
   const [centerForm, setCenterForm] = useState(emptyCenter)
   const [professionalForm, setProfessionalForm] = useState(emptyProfessional)
-  const [userForm, setUserForm] = useState({ email: '', password: '', name: '', role: 'user' as 'admin' | 'user', centerId: '' })
+  const [userForm, setUserForm] = useState({ email: '', password: '', name: '', role: 'professional' as ManagedUser['role'], centerId: '' })
   const [userEditForm, setUserEditForm] = useState(emptyUserEditForm)
   const [showPassword, setShowPassword] = useState(false)
   const [showEditPassword, setShowEditPassword] = useState(false)
@@ -341,7 +348,7 @@ export function AdminWorkspace() {
       }
       setUsers((current) => [data.user, ...current])
       setLastCreatedUser({ name: data.user.name, email: data.user.email, password: passwordSnapshot })
-      setUserForm({ email: '', password: '', name: '', role: 'user', centerId: '' })
+      setUserForm({ email: '', password: '', name: '', role: 'professional', centerId: '' })
     })
   }
 
@@ -353,7 +360,7 @@ export function AdminWorkspace() {
     const payload = {
       email: userEditForm.email,
       name: userEditForm.name,
-      role: userEditForm.role,
+      ...(!isPrimaryAdmin(selectedUser) ? { role: userEditForm.role } : {}),
       centerId: userEditForm.centerId,
       active: userEditForm.active,
       ...(userEditForm.password ? { password: userEditForm.password } : {}),
@@ -728,11 +735,13 @@ export function AdminWorkspace() {
                   {showPassword ? 'Ocultar' : 'Ver'}
                 </button>
               </div>
-              <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800">
-                Rol: Usuario operativo. El unico administrador del sistema es {PRIMARY_ADMIN_EMAIL}.
-              </div>
+              <select value={userForm.role} onChange={(e) => setUserForm((v) => ({ ...v, role: e.target.value as ManagedUser['role'] }))} className={inputClass}>
+                <option value="professional">Profesional</option>
+                <option value="center_admin">Administrador de centro</option>
+                <option value="patient">Paciente</option>
+              </select>
               <select value={userForm.centerId} onChange={(e) => setUserForm((v) => ({ ...v, centerId: e.target.value }))} className={`${inputClass} lg:col-span-2`}>
-                <option value="">Sin centro / todos si es Admin</option>
+                <option value="">{userForm.role === 'patient' ? 'Paciente sin centro asignado' : 'Seleccionar centro'}</option>
                 {centers.map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}
               </select>
               <button disabled={isPending} className="h-12 rounded-2xl bg-slate-950 text-sm font-black text-white disabled:opacity-60 lg:col-span-2">
@@ -808,11 +817,19 @@ export function AdminWorkspace() {
                       {showEditPassword ? 'Ocultar' : 'Ver'}
                     </button>
                   </div>
-                  <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm font-bold text-blue-800">
-                    Rol: {isPrimaryAdmin(selectedUser) ? 'Administrador principal protegido' : 'Usuario operativo'}
-                  </div>
-                  <select value={userEditForm.centerId} onChange={(e) => setUserEditForm((v) => ({ ...v, centerId: e.target.value }))} className={inputClass} disabled={isPrimaryAdmin(selectedUser)}>
-                    <option value="">Sin centro / todos si es Admin</option>
+                  {isPrimaryAdmin(selectedUser) ? (
+                    <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm font-bold text-blue-800">
+                      Rol: Super Admin protegido
+                    </div>
+                  ) : (
+                    <select value={userEditForm.role} onChange={(e) => setUserEditForm((v) => ({ ...v, role: e.target.value as ManagedUser['role'] }))} className={inputClass}>
+                      <option value="professional">Profesional</option>
+                      <option value="center_admin">Administrador de centro</option>
+                      <option value="patient">Paciente</option>
+                    </select>
+                  )}
+                  <select value={userEditForm.centerId} onChange={(e) => setUserEditForm((v) => ({ ...v, centerId: e.target.value }))} className={inputClass} disabled={isPrimaryAdmin(selectedUser) || userEditForm.role === 'patient'}>
+                    <option value="">{userEditForm.role === 'patient' ? 'Paciente sin centro asignado' : 'Seleccionar centro'}</option>
                     {centers.map((center) => <option key={center.id} value={center.id}>{center.name}</option>)}
                   </select>
                   <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700">
@@ -850,7 +867,8 @@ export function AdminWorkspace() {
                       </span>
                     </div>
                     <p className="text-sm text-slate-500">{user.email}</p>
-                    <p className="text-xs text-slate-400">{centers.find((center) => center.id === user.centerId)?.name ?? 'Sin centro'}</p>
+                    <p className="text-sm font-semibold text-slate-500">{roleLabel(user.role)}</p>
+                    <p className="text-xs text-slate-400">{user.role === 'patient' ? 'Paciente' : centers.find((center) => center.id === user.centerId)?.name ?? 'Sin centro'}</p>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-3">
                     <button type="button" onClick={() => setSelectedUserId(user.id)} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white">Editar</button>

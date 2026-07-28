@@ -28,20 +28,21 @@ export async function POST(req: Request) {
   }
 
   const centerId = user.centerId || process.env.DEFAULT_CENTER_ID || 'center-neuroplus'
+  const role = user.role === 'patient' ? 'patient' : user.role === 'center_admin' ? 'center_admin' : 'professional'
 
   const response = NextResponse.json({
     user: {
       id: user.id,
       email: user.email,
       name: user.name,
-      role: user.role,
+      role,
       centerId,
     },
   })
   await setLocalUserSession(response, {
     email: user.email,
     name: user.name,
-    role: user.role,
+    role,
     centerId,
   })
 

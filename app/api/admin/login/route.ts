@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
   // Acceso hardcodeado para el admin principal (funciona sin variables de entorno)
   if (['admin', ADMIN_EMAIL].includes(email) && password === 'admin') {
-    const response = NextResponse.json({ ok: true, role: 'admin' })
+    const response = NextResponse.json({ ok: true, role: 'super_admin' })
     await setLocalAdminSession(response)
     return response
   }
@@ -38,13 +38,14 @@ export async function POST(req: Request) {
     const user = await getManagedUserByEmail(email)
     if (user && verifyPassword(password, user.passwordHash)) {
       if (isPrimaryAdminEmail(user.email)) {
-        const response = NextResponse.json({ ok: true, role: 'admin' })
+        const response = NextResponse.json({ ok: true, role: 'super_admin' })
         await setLocalAdminSession(response)
         return response
       }
       const centerId = user.centerId || process.env.DEFAULT_CENTER_ID || 'center-neuroplus'
-      const response = NextResponse.json({ ok: true, role: 'user' })
-      await setLocalUserSession(response, { email: user.email, name: user.name, role: 'user', centerId })
+      const role = user.role === 'patient' ? 'patient' : user.role === 'center_admin' ? 'center_admin' : 'professional'
+      const response = NextResponse.json({ ok: true, role })
+      await setLocalUserSession(response, { email: user.email, name: user.name, role, centerId })
       return response
     }
   } catch {

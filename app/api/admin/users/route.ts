@@ -10,7 +10,7 @@ type AdminUserPayload = {
   id: string
   email: string
   name: string
-  role: 'admin' | 'user'
+  role: 'super_admin' | 'center_admin' | 'professional' | 'patient'
   centerId: string
   active: boolean
   createdAt?: string
@@ -36,7 +36,7 @@ function mapManagedUser(user: Awaited<ReturnType<typeof getManagedUsers>>[number
     id: user.id,
     email: user.email,
     name: user.name,
-    role: isPrimaryAdmin ? 'admin' : 'user',
+    role: isPrimaryAdmin ? 'super_admin' : user.role,
     centerId: isPrimaryAdmin ? '' : user.centerId,
     active: isPrimaryAdmin ? true : user.active,
     createdAt: user.createdAt,
@@ -50,7 +50,7 @@ function mapSupabaseUser(user: User): AdminUserPayload {
     id: user.id,
     email: user.email ?? '',
     name: resolveSupabaseName(user),
-    role: isPrimaryAdmin ? 'admin' : 'user',
+    role: isPrimaryAdmin ? 'super_admin' : 'professional',
     centerId: isPrimaryAdmin ? '' : user.user_metadata?.centerId ?? '',
     active: isPrimaryAdmin ? true : !user.banned_until,
     createdAt: user.created_at,
@@ -104,8 +104,8 @@ export async function POST(req: Request) {
     }
 
     const isPrimaryAdmin = isPrimaryAdminEmail(email)
-    const role = isPrimaryAdmin ? 'admin' : 'user'
-    const centerId = isPrimaryAdmin ? '' : (parsed.data.centerId || process.env.DEFAULT_CENTER_ID || 'center-neuroplus')
+    const role = isPrimaryAdmin ? 'super_admin' : parsed.data.role
+    const centerId = isPrimaryAdmin || role === 'patient' ? '' : (parsed.data.centerId || process.env.DEFAULT_CENTER_ID || 'center-neuroplus')
 
     const user = await createManagedUser({
       id: uuidv4(),

@@ -56,6 +56,20 @@ Regla vigente:
 
 ## Fases siguientes recomendadas
 
+### Fase 1 - base de identidad, permisos y pacientes
+
+Estado: iniciada e integrada en MVP.
+
+- Roles normalizados: `super_admin`, `center_admin`, `professional`, `patient`.
+- `admin@agendasalud.cl` es el unico `super_admin` real.
+- Roles heredados `admin` y `user` se interpretan como usuario operativo para evitar administradores accidentales.
+- Usuarios `patient` no pueden entrar al dashboard profesional/admin.
+- El administrador puede crear usuarios como profesional, administrador de centro o paciente.
+- Cada cita publica o manual actualiza una base `patients` en Google Sheets.
+- La ficha `patients` guarda datos minimos de contacto, consentimiento de agendamiento y ultima cita.
+- La seleccion de calendario usa profesionales y administradores de centro activos; ya no depende del rol heredado `user`.
+- El bootstrap de admin escribe `super_admin` en metadata.
+
 ### Fase 1.1 - auth y pacientes
 
 - Registro real de pacientes.

@@ -6,6 +6,16 @@ Proyecto Next.js App Router + TypeScript + Tailwind para AgendaSalud/NeuroPlus.
 
 Ultimo foco implementado:
 
+- Fase 1 clasificada y avanzada:
+  - Roles normalizados a `super_admin`, `center_admin`, `professional` y `patient`.
+  - `admin@agendasalud.cl` queda como unico `super_admin`.
+  - Roles heredados `admin`/`user` se degradan a rol operativo salvo el correo admin principal.
+  - Bootstrap escribe metadata `super_admin`.
+  - Usuarios `patient` no pueden entrar al dashboard profesional/admin.
+  - Admin puede crear/editar usuarios como profesional, administrador de centro o paciente.
+  - Pacientes se registran automaticamente en la hoja `patients` al crear una cita.
+  - `patients` guarda contacto minimo, consentimiento de agendamiento, estado activo y ultima cita.
+  - Calendarizacion fallback por centro ya busca usuarios `professional` o `center_admin`, no el rol legacy `user`.
 - Admin puede crear centros y se asegura centro base `NeuroPlus`.
 - Admin puede crear usuarios internos de AgendaSalud aunque falte `SUPABASE_SERVICE_ROLE_KEY`.
 - Login acepta usuarios internos creados por Admin si Supabase Auth no los reconoce.
@@ -198,7 +208,7 @@ Desde la instalacion en Vercel (con variables de entorno completas), ir a `/dash
    - Nombre: Andres Ruiz (o el nombre real)
    - Email: `andres.ruizvarela@gmail.com`
    - Clave: definida por el admin
-   - Rol: `user`
+   - Rol: `professional`
    - Centro: NeuroPlus
 
 2. **Crear perfil profesional:**

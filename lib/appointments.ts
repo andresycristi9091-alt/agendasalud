@@ -5,6 +5,7 @@ import {
   isSlotTaken,
   getProfessionalBySlug,
   getManagedUsers,
+  upsertPatientFromAppointment,
 } from './google/sheets'
 import { TIMEZONE, chileLocalDateTimeToISO } from './date'
 import { acquireLock, releaseLock, bookingLockKey } from './mutex'
@@ -92,7 +93,11 @@ async function bookWithLock(
     .join('\n')
 
   const centerUserEmail = professional.centerId
-    ? (await getManagedUsers()).find((user) => user.active && user.role === 'user' && user.centerId === professional.centerId)?.email
+    ? (await getManagedUsers()).find((user) =>
+        user.active &&
+        ['professional', 'center_admin'].includes(user.role) &&
+        user.centerId === professional.centerId
+      )?.email
     : ''
 
   const targetCalendarId =
@@ -137,6 +142,14 @@ async function bookWithLock(
     status:                'confirmada',
     googleCalendarEventId: calendarEventId,
   })
+
+  await upsertPatientFromAppointment({
+    name: input.patientName,
+    email: input.patientEmail,
+    phone: input.patientPhone,
+    rut: input.patientRut,
+    appointmentDate: `${input.date} ${input.startTime}`,
+  }).catch((err) => console.warn('[appointments] Error actualizando paciente:', err))
 
   // 5. Notificar al profesional (no bloqueante)
   if (professional.email) {

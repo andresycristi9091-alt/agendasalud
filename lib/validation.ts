@@ -67,13 +67,13 @@ export const AdminUserCreateSchema = z.object({
   email: z.string().email(),
   password: StrongPasswordSchema,
   name: z.string().min(2).max(120),
-  role: z.enum(['admin', 'user']),
+  role: z.enum(['professional', 'center_admin', 'patient']).default('professional'),
   centerId: z.string().optional().default(''),
 })
 
 export const AdminUserUpdateSchema = z.object({
   email: z.string().email().optional(),
-  role: z.enum(['admin', 'user']).optional(),
+  role: z.enum(['professional', 'center_admin', 'patient']).optional(),
   name: z.string().min(2).max(120).optional(),
   password: StrongPasswordSchema.optional().or(z.literal('')),
   centerId: z.string().optional(),

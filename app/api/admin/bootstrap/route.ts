@@ -49,7 +49,7 @@ export async function POST(req: Request) {
         password: newPassword,
         user_metadata: {
           name: 'Administrador AgendaSalud',
-          role: 'admin',
+          role: 'super_admin',
           centerId: '',
           passwordHash,
         },
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
       email_confirm: true,
       user_metadata: {
         name: 'Administrador AgendaSalud',
-        role: 'admin',
+        role: 'super_admin',
         centerId: '',
         passwordHash,
       },

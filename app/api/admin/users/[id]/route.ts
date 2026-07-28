@@ -71,12 +71,17 @@ export async function PATCH(
         }
       }
 
+      const nextRole = isPrimaryAdmin ? 'super_admin' : (parsed.data.role ?? managedUser.role)
+      const nextCenterId = isPrimaryAdmin || nextRole === 'patient'
+        ? ''
+        : (parsed.data.centerId ?? managedUser.centerId)
+
       const updated = await updateManagedUser(id, {
         email: requestedEmail,
-        name: parsed.data.name,
-        role: isPrimaryAdmin ? 'admin' : 'user',
-        centerId: isPrimaryAdmin ? '' : parsed.data.centerId,
-        active: isPrimaryAdmin ? true : parsed.data.active,
+        ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
+        role: nextRole,
+        centerId: nextCenterId,
+        active: isPrimaryAdmin ? true : (parsed.data.active ?? managedUser.active),
         ...(parsed.data.password ? { passwordHash: hashPassword(parsed.data.password) } : {}),
       })
 
@@ -84,9 +89,9 @@ export async function PATCH(
         ...(parsed.data.email ? { email: requestedEmail } : {}),
         ...(parsed.data.password ? { password: parsed.data.password } : {}),
         user_metadata: {
-          role: isPrimaryAdmin ? 'admin' : 'user',
+          role: nextRole,
           ...(parsed.data.name ? { name: parsed.data.name } : {}),
-          centerId: isPrimaryAdmin ? '' : (parsed.data.centerId ?? managedUser.centerId),
+          centerId: nextCenterId,
         },
         ...(isPrimaryAdmin || parsed.data.active === true ? { ban_duration: 'none' } : {}),
         ...(!isPrimaryAdmin && parsed.data.active === false ? { ban_duration: '876000h' } : {}),
@@ -97,7 +102,7 @@ export async function PATCH(
           id: updated.id,
           email: updated.email,
           name: updated.name,
-          role: isPrimaryAdmin ? 'admin' : 'user',
+          role: isPrimaryAdmin ? 'super_admin' : updated.role,
           centerId: isPrimaryAdmin ? '' : updated.centerId,
           active: isPrimaryAdmin ? true : updated.active,
           source: 'AgendaSalud',
@@ -135,9 +140,12 @@ export async function PATCH(
 
     if (parsed.data.email) payload.email = requestedEmail
     if (parsed.data.password) payload.password = parsed.data.password
-    payload.user_metadata!.role = isPrimaryAdmin ? 'admin' : 'user'
+    const nextRole = isPrimaryAdmin ? 'super_admin' : (parsed.data.role ?? 'professional')
+    const nextCenterId = isPrimaryAdmin || nextRole === 'patient' ? '' : (parsed.data.centerId ?? '')
+
+    payload.user_metadata!.role = nextRole
     if (parsed.data.name) payload.user_metadata!.name = parsed.data.name
-    payload.user_metadata!.centerId = isPrimaryAdmin ? '' : (parsed.data.centerId ?? '')
+    payload.user_metadata!.centerId = nextCenterId
     if (isPrimaryAdmin || parsed.data.active === true) payload.ban_duration = 'none'
     if (!isPrimaryAdmin && parsed.data.active === false) payload.ban_duration = '876000h'
 
@@ -149,7 +157,7 @@ export async function PATCH(
         id: data.user.id,
         email: data.user.email,
         name: data.user.user_metadata?.name ?? '',
-        role: isPrimaryAdmin ? 'admin' : 'user',
+        role: isPrimaryAdmin ? 'super_admin' : data.user.user_metadata?.role ?? 'professional',
         centerId: isPrimaryAdmin ? '' : data.user.user_metadata?.centerId ?? '',
         active: isPrimaryAdmin ? true : !data.user.banned_until,
         source: 'Supabase',

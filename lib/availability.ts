@@ -31,7 +31,11 @@ export async function getAvailableSlotsForDate(
   let busySlots: Array<{ start: string; end: string }> = []
 
   const centerUserEmail = professional.centerId
-    ? (await getManagedUsers()).find((user) => user.active && user.role === 'user' && user.centerId === professional.centerId)?.email
+    ? (await getManagedUsers()).find((user) =>
+        user.active &&
+        ['professional', 'center_admin'].includes(user.role) &&
+        user.centerId === professional.centerId
+      )?.email
     : ''
   const targetCalendarId = professional.calendarId || professional.email || centerUserEmail || process.env.GOOGLE_CALENDAR_ID || ''
 
