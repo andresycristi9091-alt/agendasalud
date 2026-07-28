@@ -798,6 +798,86 @@ export async function logReminderSent(appointmentId: string, type: '24h' | '2h')
   await appendRow('remindersSent!A:D', [id, appointmentId, type, now])
 }
 
+// ── Availability exceptions ─────────────────────────────────
+export type SheetAvailabilityException = {
+  id: string
+  scope: 'professional' | 'center' | 'all'
+  scopeId: string
+  date: string
+  startTime: string
+  endTime: string
+  reason: string
+  createdAt: string
+}
+
+const EXCEPTION_HEADERS = ['id', 'scope', 'scopeId', 'date', 'startTime', 'endTime', 'reason', 'createdAt']
+
+function rowToAvailabilityException(row: string[]): SheetAvailabilityException {
+  const rawScope = String(row[1] ?? 'professional').toLowerCase()
+  const scope: SheetAvailabilityException['scope'] =
+    rawScope === 'center' || rawScope === 'all' ? rawScope : 'professional'
+
+  return {
+    id: row[0] ?? '',
+    scope,
+    scopeId: row[2] ?? '',
+    date: row[3] ?? '',
+    startTime: row[4] ?? '',
+    endTime: row[5] ?? '',
+    reason: row[6] ?? '',
+    createdAt: row[7] ?? '',
+  }
+}
+
+export async function getAvailabilityExceptions(): Promise<SheetAvailabilityException[]> {
+  const rows = await getSheetData('availabilityExceptions!A:H').catch(() => [])
+  if (rows.length < 2) return []
+  return rows.slice(1).filter((row) => row[0]).map(rowToAvailabilityException)
+}
+
+export async function createAvailabilityException(
+  data: Omit<SheetAvailabilityException, 'createdAt'>
+): Promise<void> {
+  await ensureSheet('availabilityExceptions', EXCEPTION_HEADERS)
+  await appendRow('availabilityExceptions!A:H', [
+    data.id,
+    data.scope,
+    data.scopeId,
+    data.date,
+    data.startTime,
+    data.endTime,
+    data.reason,
+    new Date().toISOString(),
+  ])
+}
+
+export async function deleteAvailabilityException(id: string): Promise<void> {
+  const rows = await getSheetData('availabilityExceptions!A:H')
+  const rowIndex = rows.findIndex((row, index) => index > 0 && row[0] === id)
+  if (rowIndex === -1) throw new Error('Bloqueo no encontrado')
+
+  const metadata = await getSheetsClient().spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const sheet = metadata.data.sheets?.find((item) => item.properties?.title === 'availabilityExceptions')
+  const sheetId = sheet?.properties?.sheetId
+  if (sheetId === undefined) throw new Error('Hoja availabilityExceptions no encontrada')
+
+  await getSheetsClient().spreadsheets.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: {
+            sheetId,
+            dimension: 'ROWS',
+            startIndex: rowIndex,
+            endIndex: rowIndex + 1,
+          },
+        },
+      }],
+    },
+  })
+}
+
 // ── Password resets ─────────────────────────────────────────
 export type PasswordResetRecord = {
   id: string

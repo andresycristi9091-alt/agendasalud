@@ -3,6 +3,7 @@
 /* eslint-disable react-hooks/immutability, react-hooks/set-state-in-effect, @next/next/no-img-element */
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
+import { AvailabilityExceptionsPanel } from '@/components/dashboard/AvailabilityExceptionsPanel'
 
 type HealthCenter = {
   id: string
@@ -464,6 +465,12 @@ export function AdminWorkspace() {
               <button className="h-12 w-full rounded-2xl bg-blue-600 text-sm font-black text-white">Crear centro</button>
             </form>
           </Panel>
+
+          <AvailabilityExceptionsPanel
+            isAdmin
+            professionals={professionals.map((professional) => ({ id: professional.id, name: professional.name }))}
+            centers={centers.map((center) => ({ id: center.id, name: center.name }))}
+          />
 
           <Panel title={selectedProfessionalId ? 'Edicion activa' : 'Nuevo profesional'} eyebrow="Profesionales">
             {selectedProfessionalId ? (

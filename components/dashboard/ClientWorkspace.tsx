@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
+import { AvailabilityExceptionsPanel } from './AvailabilityExceptionsPanel'
 
 type AvailabilityBlock = {
   id: string
@@ -591,6 +592,13 @@ export function ClientWorkspace() {
                   disabled={!selectedProfessionalId}
                   onChange={setManualForm}
                   onSubmit={createManualAppointment}
+                />
+              </div>
+
+              <div className="xl:col-span-2">
+                <AvailabilityExceptionsPanel
+                  professionalId={selectedProfessionalId}
+                  professionals={professionals.map((professional) => ({ id: professional.id, name: professional.name }))}
                 />
               </div>
             </div>

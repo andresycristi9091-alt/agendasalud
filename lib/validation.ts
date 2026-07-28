@@ -93,6 +93,28 @@ export const AdminCenterSchema = z.object({
   active: z.boolean().default(true),
 })
 
+export const AvailabilityExceptionSchema = z.object({
+  scope: z.enum(['professional', 'center', 'all']).default('professional'),
+  scopeId: z.string().max(80).optional().default(''),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/).optional().or(z.literal('')).default(''),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/).optional().or(z.literal('')).default(''),
+  reason: z.string().max(200).optional().default(''),
+}).refine((data) => {
+  const hasStart = Boolean(data.startTime)
+  const hasEnd = Boolean(data.endTime)
+  return hasStart === hasEnd
+}, {
+  message: 'Debes indicar hora de inicio y termino, o dejar ambas vacias para bloquear el dia completo',
+  path: ['endTime'],
+}).refine((data) => !data.startTime || !data.endTime || data.startTime < data.endTime, {
+  message: 'La hora de inicio debe ser anterior a la hora de termino',
+  path: ['endTime'],
+}).refine((data) => data.scope === 'all' || Boolean(data.scopeId), {
+  message: 'Debes indicar el profesional o centro al que aplica el bloqueo',
+  path: ['scopeId'],
+})
+
 export const ManualAppointmentSchema = z.object({
   professionalId: z.string().min(1),
   patientName: z.string().min(2).max(100),
@@ -116,3 +138,4 @@ export type AdminUserCreateInput = z.infer<typeof AdminUserCreateSchema>
 export type AdminUserUpdateInput = z.infer<typeof AdminUserUpdateSchema>
 export type AdminCenterInput = z.infer<typeof AdminCenterSchema>
 export type ManualAppointmentInput = z.infer<typeof ManualAppointmentSchema>
+export type AvailabilityExceptionInput = z.infer<typeof AvailabilityExceptionSchema>

@@ -3,12 +3,18 @@ import { createCalendarEvent } from './google/calendar'
 import {
   createAppointment,
   isSlotTaken,
+  getAvailabilityExceptions,
   getProfessionalBySlug,
   getManagedUsers,
   upsertPatientFromAppointment,
 } from './google/sheets'
-import { TIMEZONE, chileLocalDateTimeToISO } from './date'
+import { TIMEZONE, chileLocalDateTimeToISO, isSlotBusy } from './date'
 import { evaluateBookingRules, getBookingRules } from './booking-rules'
+import {
+  exceptionsToBusyIntervals,
+  filterExceptionsForDate,
+  isFullDayException,
+} from './availability-exceptions'
 import { acquireLock, releaseLock, bookingLockKey } from './mutex'
 import { sendProfessionalNotification } from './email'
 import type { AppointmentInput } from './validation'
@@ -34,6 +40,26 @@ export async function bookAppointment(input: AppointmentInput): Promise<BookingR
   )
   if (!ruleCheck.allowed) {
     return { success: false, error: ruleCheck.message }
+  }
+
+  // Excepciones de disponibilidad (feriados/bloqueos) tambien se re-verifican
+  // en el flujo publico por si el paciente tenia la pagina abierta hace rato.
+  const exceptions = filterExceptionsForDate(
+    await getAvailabilityExceptions().catch(() => []),
+    professional,
+    input.date
+  )
+  const hasFullDayBlock = exceptions.some(isFullDayException)
+  const overlapsBlock = isSlotBusy(
+    chileLocalDateTimeToISO(input.date, input.startTime),
+    chileLocalDateTimeToISO(input.date, input.endTime),
+    exceptionsToBusyIntervals(exceptions, input.date)
+  )
+  if (hasFullDayBlock || overlapsBlock) {
+    return {
+      success: false,
+      error: 'La agenda no esta disponible en esa fecha u horario. Por favor elige otro.',
+    }
   }
 
   // 2. Adquirir lock atomico para prevenir doble-booking concurrente

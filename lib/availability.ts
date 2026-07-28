@@ -1,7 +1,18 @@
 import { getBusySlots } from './google/calendar'
-import { getAvailabilityByProfessional, getAppointmentsByDateAndProfessional, getManagedUsers, type Professional } from './google/sheets'
+import {
+  getAvailabilityByProfessional,
+  getAppointmentsByDateAndProfessional,
+  getAvailabilityExceptions,
+  getManagedUsers,
+  type Professional,
+} from './google/sheets'
 import { generateTimeSlots, isSlotBusy, getDayOfWeekKey, TIMEZONE, chileDayBoundary, chileLocalDateTimeToISO } from './date'
 import { evaluateBookingRules, expandBusyIntervalsWithBuffer, getBookingRules } from './booking-rules'
+import {
+  exceptionsToBusyIntervals,
+  filterExceptionsForDate,
+  isFullDayException,
+} from './availability-exceptions'
 
 export type TimeSlot = {
   startTime: string
@@ -23,6 +34,13 @@ export async function getAvailableSlotsForDate(
   const dayBlocks = availabilityBlocks.filter((b) => b.dayOfWeek === date || b.dayOfWeek === dayKey)
 
   if (dayBlocks.length === 0) return []
+
+  // Excepciones: feriados y bloqueos puntuales por profesional, centro o globales
+  const allExceptions = await getAvailabilityExceptions().catch(() => [])
+  const dayExceptions = filterExceptionsForDate(allExceptions, professional, date)
+  if (dayExceptions.some(isFullDayException)) return []
+
+  const exceptionIntervals = exceptionsToBusyIntervals(dayExceptions, date)
 
   const bookingRules = getBookingRules()
 
@@ -59,11 +77,15 @@ export async function getAvailableSlotsForDate(
     }
   }
 
-  // Buffer entre citas: expandir intervalos ocupados (Sheets + Calendar)
-  const blockedIntervals = expandBusyIntervalsWithBuffer(
-    [...sheetBusyIntervals, ...busySlots],
-    bookingRules.bufferMinutes
-  )
+  // Buffer entre citas: expandir intervalos ocupados (Sheets + Calendar).
+  // Las excepciones se agregan sin buffer: bloquean exactamente su rango.
+  const blockedIntervals = [
+    ...expandBusyIntervalsWithBuffer(
+      [...sheetBusyIntervals, ...busySlots],
+      bookingRules.bufferMinutes
+    ),
+    ...exceptionIntervals,
+  ]
 
   const now = new Date()
   const seen = new Set<string>()
