@@ -8,6 +8,7 @@ import {
   upsertPatientFromAppointment,
 } from './google/sheets'
 import { TIMEZONE, chileLocalDateTimeToISO } from './date'
+import { evaluateBookingRules, getBookingRules } from './booking-rules'
 import { acquireLock, releaseLock, bookingLockKey } from './mutex'
 import { sendProfessionalNotification } from './email'
 import type { AppointmentInput } from './validation'
@@ -22,6 +23,17 @@ export async function bookAppointment(input: AppointmentInput): Promise<BookingR
   const professional = await getProfessionalBySlug(input.professionalSlug)
   if (!professional) {
     return { success: false, error: 'Profesional no encontrado.' }
+  }
+
+  // Booking rules solo aplican al flujo publico de pacientes.
+  // El flujo manual del profesional permite walk-ins y registro retroactivo.
+  const ruleCheck = evaluateBookingRules(
+    chileLocalDateTimeToISO(input.date, input.startTime),
+    new Date(),
+    getBookingRules()
+  )
+  if (!ruleCheck.allowed) {
+    return { success: false, error: ruleCheck.message }
   }
 
   // 2. Adquirir lock atomico para prevenir doble-booking concurrente

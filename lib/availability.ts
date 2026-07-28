@@ -1,6 +1,7 @@
 import { getBusySlots } from './google/calendar'
 import { getAvailabilityByProfessional, getAppointmentsByDateAndProfessional, getManagedUsers, type Professional } from './google/sheets'
-import { generateTimeSlots, isSlotBusy, getDayOfWeekKey, TIMEZONE, chileDayBoundary } from './date'
+import { generateTimeSlots, isSlotBusy, getDayOfWeekKey, TIMEZONE, chileDayBoundary, chileLocalDateTimeToISO } from './date'
+import { evaluateBookingRules, expandBusyIntervalsWithBuffer, getBookingRules } from './booking-rules'
 
 export type TimeSlot = {
   startTime: string
@@ -23,9 +24,15 @@ export async function getAvailableSlotsForDate(
 
   if (dayBlocks.length === 0) return []
 
+  const bookingRules = getBookingRules()
+
   // Citas ya registradas en Sheets
   const existingAppointments = await getAppointmentsByDateAndProfessional(professional.id, date)
   const takenStartTimes = new Set(existingAppointments.map((a) => a.startTime))
+  const sheetBusyIntervals = existingAppointments.map((appointment) => ({
+    start: chileLocalDateTimeToISO(date, appointment.startTime),
+    end: chileLocalDateTimeToISO(date, appointment.endTime),
+  }))
 
   // Horas ocupadas en Google Calendar
   let busySlots: Array<{ start: string; end: string }> = []
@@ -52,6 +59,13 @@ export async function getAvailableSlotsForDate(
     }
   }
 
+  // Buffer entre citas: expandir intervalos ocupados (Sheets + Calendar)
+  const blockedIntervals = expandBusyIntervalsWithBuffer(
+    [...sheetBusyIntervals, ...busySlots],
+    bookingRules.bufferMinutes
+  )
+
+  const now = new Date()
   const seen = new Set<string>()
   const allSlots: TimeSlot[] = []
 
@@ -65,12 +79,12 @@ export async function getAvailableSlotsForDate(
       seen.add(slot.startTime)
 
       const isTakenInSheets  = takenStartTimes.has(slot.startTime)
-      const isTakenInCal     = isSlotBusy(slot.startISO, slot.endISO, busySlots)
-      const isInPast         = new Date(slot.startISO) < new Date()
+      const isBlocked        = isSlotBusy(slot.startISO, slot.endISO, blockedIntervals)
+      const passesRules      = evaluateBookingRules(slot.startISO, now, bookingRules).allowed
 
       allSlots.push({
         ...slot,
-        available: !isTakenInSheets && !isTakenInCal && !isInPast,
+        available: !isTakenInSheets && !isBlocked && passesRules,
       })
     }
   }

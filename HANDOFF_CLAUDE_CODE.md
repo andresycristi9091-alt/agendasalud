@@ -158,7 +158,25 @@ Ultimo foco implementado:
   - `ADMIN_SESSION_SECRET` ya no provoca 500 si falta; usa fallback estable para no romper `/dashboard`.
   - `ADMIN_EMAILS` ya no provoca 500 si falta; retorna lista vacia y respeta `user_metadata.role`.
 
-## Mejoras de calidad y compliance (ultima sesion)
+## Tests automatizados y booking rules (ultima sesion)
+
+- Vitest configurado (`vitest.config.ts`, scripts `npm test` y `npm run test:watch`).
+- 59 tests en `tests/` cubriendo:
+  - `lib/date.ts`: slots, solapamientos, offsets DST de Chile, limites de dia.
+  - `lib/validation.ts`: schemas de citas, disponibilidad, usuarios y contrasenas.
+  - `lib/rate-limit.ts`: limites, ventanas, reset y buckets por IP.
+  - `lib/booking-rules.ts`: reglas de anticipacion, ventana maxima y buffer.
+  - `lib/availability.ts`: integracion con mocks de Sheets/Calendar (slots tomados, buffer, lead time).
+- Booking rules (prioridad 10 del handoff) implementadas en `lib/booking-rules.ts`:
+  - `BOOKING_MIN_LEAD_MINUTES` (default 60): anticipacion minima para reservar.
+  - `BOOKING_MAX_ADVANCE_DAYS` (default 90): ventana maxima de reserva.
+  - `BOOKING_BUFFER_MINUTES` (default 0): buffer entre citas; expande intervalos ocupados.
+  - Configurables por variables de entorno, documentadas en `.env.example`.
+  - Se aplican en `getAvailableSlotsForDate` (slots publicos) y en `bookAppointment` (flujo publico).
+  - El flujo manual del profesional (`bookAppointmentForProfessional`) NO aplica reglas: permite walk-ins y registro retroactivo.
+  - La disponibilidad ahora tambien bloquea por solapamiento real con citas de Sheets (antes solo comparaba hora de inicio exacta).
+
+## Mejoras de calidad y compliance (sesion anterior)
 
 - Revision GitHub de sistemas de agendamiento:
   - Se revisaron Easy!Appointments, Cal.diy, NextAppointments, NexCal y Next.js Appointment Booking.
@@ -264,10 +282,11 @@ Para produccion sigue siendo recomendable definir:
 
 ```bash
 npm run lint
+npm test
 npm run build
 ```
 
-Ambos pasaron antes de crear este handoff. Ejecutar nuevamente si se hacen cambios posteriores.
+Los tres pasaron antes de crear este handoff. Ejecutar nuevamente si se hacen cambios posteriores.
 
 ## Prompt sugerido para Claude Code
 
@@ -318,10 +337,10 @@ Prioridades siguientes:
 4. Probar agendamiento real con un calendario compartido del profesional.
 5. Mejorar recuperacion/cambio de contrasena para usuarios internos.
 6. Agregar auditoria de acciones admin y cambios de agenda.
-7. Agregar pruebas basicas de APIs criticas.
+7. HECHO: pruebas basicas con Vitest (59 tests en tests/). Ampliar cobertura a rutas API.
 8. Mantener accesibilidad WCAG, mensajes claros y diseno HealthTech.
 9. Migrar rate limiting actual desde memoria local a Redis/Vercel KV/Unkey antes de escalar trafico real.
-10. Implementar booking rules maduras: anticipacion minima, ventana maxima, buffers y excepciones de disponibilidad.
+10. HECHO: booking rules base en lib/booking-rules.ts (anticipacion minima, ventana maxima, buffer via env). Pendiente: excepciones de disponibilidad (feriados/bloqueos puntuales).
 
 Antes de terminar:
 - Ejecuta npm run lint.
