@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getAppointmentById, updateAppointmentStatus, getProfessionalById } from '@/lib/google/sheets'
+import { getProfessionalById } from '@/lib/google/sheets'
+import { getAppointmentById, updateAppointmentStatus } from '@/lib/data/appointments'
 import { cancelCalendarEvent } from '@/lib/google/calendar'
 import { sendCancellationEmail, sendProfessionalCancellationEmail } from '@/lib/email'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
@@ -48,7 +49,7 @@ export async function POST(
     return NextResponse.json({ error: 'No se puede cancelar una cita ya completada' }, { status: 409 })
   }
 
-  await updateAppointmentStatus(id, 'cancelada')
+  await updateAppointmentStatus(id, 'cancelada', 'patient')
 
   // Invariante I-05 del blueprint: toda transicion de estado queda auditada,
   // incluida la cancelacion iniciada por el propio paciente.

@@ -2,11 +2,11 @@ import { getCurrentUserRole } from '@/lib/auth/admin'
 import {
   getAllAvailability,
   getAllProfessionalsForAdmin,
-  getAppointmentById,
   type Availability,
   type Appointment,
   type Professional,
 } from '@/lib/google/sheets'
+import { getAppointmentById } from '@/lib/data/appointments'
 
 type AuthContext = Awaited<ReturnType<typeof getCurrentUserRole>>
 

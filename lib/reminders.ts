@@ -1,4 +1,5 @@
-import { getAppointmentsByDate, getRemindersSent, logReminderSent, getProfessionalById } from './google/sheets'
+import { getRemindersSent, logReminderSent, getProfessionalById } from './google/sheets'
+import { getAppointmentsByDate } from './data/appointments'
 import { sendReminderEmail } from './email'
 import { TIMEZONE } from './date'
 

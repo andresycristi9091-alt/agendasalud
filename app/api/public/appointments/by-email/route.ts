@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from 'next/server'
-import { getAppointmentsByPatientEmail, getProfessionalById } from '@/lib/google/sheets'
+import { getProfessionalById } from '@/lib/google/sheets'
+import { getAppointmentsByPatientEmail } from '@/lib/data/appointments'
 import { z } from 'zod'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 

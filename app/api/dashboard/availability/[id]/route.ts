@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { deleteAvailability, getAppointmentsByDateAndProfessional } from '@/lib/google/sheets'
+import { deleteAvailability } from '@/lib/google/sheets'
+import { getAppointmentsByDateAndProfessional } from '@/lib/data/appointments'
 import { requireAvailabilityAccess, requireDashboardUser } from '@/lib/auth/permissions'
 import { getRequestIp, logAuditEvent } from '@/lib/audit'
 

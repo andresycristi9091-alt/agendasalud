@@ -724,6 +724,15 @@ export async function getAppointmentById(id: string): Promise<Appointment | null
   return row ? rowToObject<Appointment>(headers, row) : null
 }
 
+export async function getAllAppointments(): Promise<Appointment[]> {
+  const rows = await getSheetData('appointments!A:Q')
+  if (rows.length < 2) return []
+  const headers = rows[0]
+  return rows.slice(1)
+    .filter((r) => r[0])
+    .map((r) => rowToObject<Appointment>(headers, r))
+}
+
 export async function getAppointmentsByDateAndProfessional(
   professionalId: string,
   date: string

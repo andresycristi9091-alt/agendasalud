@@ -1,11 +1,11 @@
 import { getBusySlots } from './google/calendar'
 import {
   getAvailabilityByProfessional,
-  getAppointmentsByDateAndProfessional,
   getAvailabilityExceptions,
   getManagedUsers,
   type Professional,
 } from './google/sheets'
+import { getAppointmentsByDateAndProfessional } from './data/appointments'
 import { generateTimeSlots, isSlotBusy, getDayOfWeekKey, TIMEZONE, chileDayBoundary, chileLocalDateTimeToISO } from './date'
 import { evaluateBookingRules, expandBusyIntervalsWithBuffer, getBookingRules } from './booking-rules'
 import {

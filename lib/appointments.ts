@@ -1,13 +1,18 @@
 import { v4 as uuidv4 } from 'uuid'
-import { createCalendarEvent } from './google/calendar'
+import { cancelCalendarEvent, createCalendarEvent } from './google/calendar'
 import {
-  createAppointment,
-  isSlotTaken,
   getAvailabilityExceptions,
   getProfessionalBySlug,
   getManagedUsers,
   upsertPatientFromAppointment,
 } from './google/sheets'
+import {
+  createAppointmentRecord,
+  findIdempotentBooking,
+  isSlotTaken,
+} from './data/appointments'
+import { bookingRequestHash, resolveIdempotencyKey } from './data/booking-idempotency'
+import { SlotTakenError } from './db/booking'
 import { TIMEZONE, chileLocalDateTimeToISO, isSlotBusy } from './date'
 import { evaluateBookingRules, getBookingRules } from './booking-rules'
 import {
@@ -24,11 +29,36 @@ export type BookingResult =
   | { success: true;  appointmentId: string; calendarEventId: string }
   | { success: false; error: string }
 
-export async function bookAppointment(input: AppointmentInput): Promise<BookingResult> {
+export async function bookAppointment(
+  input: AppointmentInput,
+  options?: { idempotencyKey?: string | null }
+): Promise<BookingResult> {
   // 1. Obtener profesional
   const professional = await getProfessionalBySlug(input.professionalSlug)
   if (!professional) {
     return { success: false, error: 'Profesional no encontrado.' }
+  }
+
+  // Idempotencia (I-04): un reintento del mismo intento de reserva devuelve
+  // la cita ya creada en vez de fallar o duplicar.
+  const requestHash = bookingRequestHash({
+    professionalId: professional.id,
+    date: input.date,
+    startTime: input.startTime,
+    endTime: input.endTime,
+    patientEmail: input.patientEmail,
+  })
+  const idempotencyKey = resolveIdempotencyKey(options?.idempotencyKey, {
+    professionalId: professional.id,
+    date: input.date,
+    startTime: input.startTime,
+    endTime: input.endTime,
+    patientEmail: input.patientEmail,
+  })
+
+  const existingBooking = await findIdempotentBooking(idempotencyKey, requestHash)
+  if (existingBooking) {
+    return { success: true, appointmentId: existingBooking, calendarEventId: '' }
   }
 
   // Booking rules solo aplican al flujo publico de pacientes.
@@ -73,7 +103,11 @@ export async function bookAppointment(input: AppointmentInput): Promise<BookingR
   }
 
   try {
-    return await bookWithLock(professional, input)
+    return await bookWithLock(professional, input, {
+      idempotencyKey,
+      requestHash,
+      actor: 'patient',
+    })
   } finally {
     releaseLock(lockKey)
   }
@@ -93,19 +127,30 @@ export async function bookAppointmentForProfessional(
   }
 
   try {
-    return await bookWithLock(professional, {
-      ...input,
-      professionalSlug: professional.slug,
-      acceptTerms: true,
-    })
+    return await bookWithLock(
+      professional,
+      {
+        ...input,
+        professionalSlug: professional.slug,
+        acceptTerms: true,
+      },
+      { actor: 'professional' }
+    )
   } finally {
     releaseLock(lockKey)
   }
 }
 
+type BookWithLockOptions = {
+  idempotencyKey?: string
+  requestHash?: string
+  actor: string
+}
+
 async function bookWithLock(
   professional: Professional,
   input: AppointmentInput,
+  options: BookWithLockOptions,
 ): Promise<BookingResult> {
   // Verificacion post-lock: confirmar que el slot sigue libre
   const alreadyTaken = await isSlotTaken(professional.id, input.date, input.startTime)
@@ -162,24 +207,52 @@ async function bookWithLock(
     }
   }
 
-  // 4. Registrar en Google Sheets
-  const id = uuidv4()
-  await createAppointment({
-    id,
-    professionalId:        professional.id,
-    professionalSlug:      input.professionalSlug,
-    patientName:           input.patientName,
-    patientEmail:          input.patientEmail,
-    patientPhone:          input.patientPhone,
-    patientRut:            input.patientRut ?? '',
-    reason:                input.reason ?? '',
-    date:                  input.date,
-    startTime:             input.startTime,
-    endTime:               input.endTime,
-    timezone:              TIMEZONE,
-    status:                'confirmada',
-    googleCalendarEventId: calendarEventId,
-  })
+  // 4. Registrar la cita (Postgres con exclusion constraints si esta activo;
+  //    Google Sheets en el modo historico)
+  let id = uuidv4()
+  try {
+    const created = await createAppointmentRecord(
+      {
+        id,
+        professionalId:        professional.id,
+        professionalSlug:      input.professionalSlug,
+        patientName:           input.patientName,
+        patientEmail:          input.patientEmail,
+        patientPhone:          input.patientPhone,
+        patientRut:            input.patientRut ?? '',
+        reason:                input.reason ?? '',
+        date:                  input.date,
+        startTime:             input.startTime,
+        endTime:               input.endTime,
+        timezone:              TIMEZONE,
+        status:                'confirmada',
+        googleCalendarEventId: calendarEventId,
+      },
+      {
+        idempotencyKey: options.idempotencyKey,
+        requestHash: options.requestHash,
+        actor: options.actor,
+      }
+    )
+    id = created.appointmentId
+
+    if (created.duplicate) {
+      // Reintento idempotente: la cita ya existia. El evento de Calendar
+      // recien creado sobra; se elimina best effort.
+      if (calendarEventId && targetCalendarId) {
+        cancelCalendarEvent(targetCalendarId, calendarEventId).catch(() => {})
+      }
+      return { success: true, appointmentId: id, calendarEventId: '' }
+    }
+  } catch (error) {
+    if (error instanceof SlotTakenError) {
+      if (calendarEventId && targetCalendarId) {
+        cancelCalendarEvent(targetCalendarId, calendarEventId).catch(() => {})
+      }
+      return { success: false, error: error.message }
+    }
+    throw error
+  }
 
   await upsertPatientFromAppointment({
     name: input.patientName,

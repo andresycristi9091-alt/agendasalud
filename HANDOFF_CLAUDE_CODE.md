@@ -172,7 +172,39 @@ Revisar en el dashboard de Vercel:
 
 Nada de lo mergeado hoy esta activo en produccion hasta resolver esto.
 
-## Blueprint del cliente incorporado (ultima sesion)
+## Etapa 1: nucleo de citas en Supabase Postgres (ultima sesion)
+
+Implementada la Etapa 1 de `docs/RECONCILIACION_MVP_BLUEPRINT.md`. El codigo esta
+desplegado pero INACTIVO hasta ejecutar el runbook `docs/ETAPA1_MIGRACION_POSTGRES.md`
+(migracion SQL en Supabase + `BOOKING_BACKEND=postgres` + backfill).
+
+- `supabase/migrations/0001_booking_core.sql`: tablas `appointment` (con DOS
+  restricciones `EXCLUDE USING gist`: por profesional I-01 y por paciente I-02),
+  `appointment_transition` (I-05) e `idempotency_record` (I-04); funciones
+  transaccionales `book_appointment`, `transition_appointment`, `import_appointment`;
+  RLS sin policies (solo service role).
+- `lib/db/booking.ts`: repositorio Supabase (rpc + queries, errores tipados
+  `SlotTakenError` / `IdempotencyConflictError`).
+- `lib/data/appointments.ts`: facade conmutable. Default Sheets (comportamiento
+  historico); con `BOOKING_BACKEND=postgres` la fuente de verdad es Postgres y
+  Sheets queda como espejo de lectura best effort (import diferido del modulo pg).
+- `lib/data/booking-idempotency.ts`: clave desde header `Idempotency-Key` o
+  derivada del payload (mismo intento = misma clave), hash canonico del request.
+- `lib/appointments.ts`: el flujo publico chequea idempotencia antes del lock,
+  maneja `SlotTakenError` de la constraint (cancela el evento de Calendar creado),
+  y los reintentos duplicados devuelven la cita existente. Actor en transiciones:
+  patient / professional / email del dashboard.
+- Consumidores recableados al facade: availability, reminders, permissions y las
+  6 rutas de citas (public [id], by-email, cancel, dashboard GET/PATCH, availability DELETE).
+- `POST /api/admin/migrate-appointments`: backfill idempotente Sheets -> Postgres;
+  reporta imported/exists/conflicts/invalid/failures.
+- Tests nuevos: `tests/booking-idempotency.test.ts` (hash canonico, resolucion de
+  clave, flag del backend). Total: 116 tests.
+
+IMPORTANTE: mientras `BOOKING_BACKEND` no este definido, TODO sigue funcionando
+exactamente como antes (Sheets). No hay cambio de comportamiento hasta activar.
+
+## Blueprint del cliente incorporado (sesion anterior)
 
 El cliente entrego el blueprint "Plataforma de Agendamiento Clinico" y quedo
 incorporado al repo:

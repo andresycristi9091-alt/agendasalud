@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getAppointmentById, getProfessionalById } from '@/lib/google/sheets'
+import { getProfessionalById } from '@/lib/google/sheets'
+import { getAppointmentById } from '@/lib/data/appointments'
 
 export async function GET(
   _req: Request,

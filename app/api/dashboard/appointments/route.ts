@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getAppointmentsByProfessional } from '@/lib/google/sheets'
+import { getAppointmentsByProfessional } from '@/lib/data/appointments'
 import { requireProfessionalAccess } from '@/lib/auth/permissions'
 import { ManualAppointmentSchema } from '@/lib/validation'
 import { bookAppointmentForProfessional } from '@/lib/appointments'

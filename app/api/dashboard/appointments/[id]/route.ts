@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { updateAppointmentStatus, getAppointmentById, getProfessionalById } from '@/lib/google/sheets'
+import { getProfessionalById } from '@/lib/google/sheets'
+import { getAppointmentById, updateAppointmentStatus } from '@/lib/data/appointments'
 import { cancelCalendarEvent } from '@/lib/google/calendar'
 import { sendCancellationEmail, sendProfessionalCancellationEmail } from '@/lib/email'
 import { UpdateStatusSchema } from '@/lib/validation'
@@ -24,7 +25,7 @@ export async function PATCH(
 
     const appointment = await getAppointmentById(id)
 
-    await updateAppointmentStatus(id, parsed.data.status)
+    await updateAppointmentStatus(id, parsed.data.status, actorContext.user?.email ?? 'dashboard')
 
     logAuditEvent({
       actorEmail: actorContext.user?.email ?? '',

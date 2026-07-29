@@ -30,7 +30,9 @@ export async function POST(req: Request) {
       )
     }
 
-    const result = await bookAppointment(parsed.data)
+    const result = await bookAppointment(parsed.data, {
+      idempotencyKey: req.headers.get('Idempotency-Key'),
+    })
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 409 })
