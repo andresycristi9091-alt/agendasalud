@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { getManagedUserByEmail } from '@/lib/google/sheets'
 import { verifyPassword } from '@/lib/auth/password'
 import { setLocalUserSession } from '@/lib/auth/local-admin-session'
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   const email = String(body.email ?? '').trim().toLowerCase()
   const password = String(body.password ?? '')
 
-  const limit = rateLimit(req, `professional-login:${email || 'anonimo'}`, {
+  const limit = await rateLimit(req, `professional-login:${email || 'anonimo'}`, {
     limit: 8,
     windowMs: 15 * 60 * 1000,
   })

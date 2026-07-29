@@ -21,7 +21,7 @@ export async function POST(
     return NextResponse.json({ error: 'Se requiere el correo del paciente para confirmar la cancelacion' }, { status: 400 })
   }
 
-  const limit = rateLimit(req, `public-cancel:${id}:${body.email}`, {
+  const limit = await rateLimit(req, `public-cancel:${id}:${body.email}`, {
     limit: 5,
     windowMs: 15 * 60 * 1000,
   })

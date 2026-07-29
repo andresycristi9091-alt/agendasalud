@@ -158,7 +158,38 @@ Ultimo foco implementado:
   - `ADMIN_SESSION_SECRET` ya no provoca 500 si falta; usa fallback estable para no romper `/dashboard`.
   - `ADMIN_EMAILS` ya no provoca 500 si falta; retorna lista vacia y respeta `user_metadata.role`.
 
-## Fases A/B/C del plan de candidatos (ultima sesion)
+## ALERTA: deploy de Vercel desactualizado (verificar primero)
+
+Al 2026-07-28, `https://agendasalud.vercel.app` responde `/api/health` OK pero
+`/recuperar-contrasena` devuelve 404, es decir, el deploy NO incluye los commits
+recientes (`7269ff7` en adelante) aunque estan pusheados en
+`github.com/andresycristi9091-alt/agendasalud` rama `main`.
+
+Revisar en el dashboard de Vercel:
+1. Que el proyecto este conectado a ese repo y a la rama `main`.
+2. Que los ultimos deploys no esten fallando (ver logs de build).
+3. Si el dominio real es otro, actualizar `NEXT_PUBLIC_APP_URL`.
+
+Nada de lo mergeado hoy esta activo en produccion hasta resolver esto.
+
+## Infraestructura y feriados (ultima sesion)
+
+- Rate limiting persistente (prioridad 9):
+  - `lib/rate-limit.ts` ahora es async y usa Redis via REST cuando existen
+    `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` (o `KV_REST_API_URL`/`KV_REST_API_TOKEN` de Vercel KV).
+  - Pipeline INCR + PEXPIRE NX + PTTL; si Redis falla, cae al backend en memoria sin romper el request.
+  - Los 8 endpoints protegidos ahora hacen `await rateLimit(...)`.
+  - Para activarlo en produccion: crear una base en Upstash (plan free sirve) o Vercel KV y setear las variables. Sin variables sigue funcionando in-memory.
+- Feriados de Chile:
+  - `lib/chile-holidays.ts` con feriados 2026 y 2027 (movibles ya desplazados; el admin puede editar/eliminar).
+  - `POST /api/admin/holidays { year }` crea los feriados como bloqueos globales (scope `all`), deduplicando por fecha, con evento de auditoria.
+  - Botones "Feriados de Chile 2026/2027" en el panel de bloqueos del Admin.
+- Tests de rutas API criticas:
+  - `tests/api-password-reset.test.ts`: 10 tests de los handlers HTTP request/confirm (mensaje generico anti enumeracion, token hasheado en Sheets vs token crudo en el email, rate limit 429, tokens expirados/usados/desconocidos, clave debil).
+  - `tests/rate-limit.test.ts` ampliado con el modo Redis (pipeline correcto, bloqueo, fallback a memoria).
+  - Total: 106 tests.
+
+## Fases A/B/C del plan de candidatos (sesion anterior)
 
 Plan completo en `docs/PLAN_CANDIDATOS_SIGUIENTES.md`. Las tres fases quedaron implementadas:
 

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { setLocalAdminSession } from '@/lib/auth/local-admin-session'
 import { getManagedUserByEmail } from '@/lib/google/sheets'
 import { verifyPassword } from '@/lib/auth/password'
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const email = String(body.email ?? '').trim().toLowerCase()
   const password = String(body.password ?? '')
 
-  const limit = rateLimit(req, `admin-login:${email || 'anonimo'}`, {
+  const limit = await rateLimit(req, `admin-login:${email || 'anonimo'}`, {
     limit: 8,
     windowMs: 15 * 60 * 1000,
   })
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       return response
     }
   } catch {
-    // Sheets no disponible — continuar con error generico
+    // Sheets no disponible - continuar con error generico
   }
 
   logAuditEvent({

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { getLocalAdminSession } from '@/lib/auth/local-admin-session'
 import { getManagedUserByEmail, updateManagedUser } from '@/lib/google/sheets'
 import { verifyPassword, hashPassword } from '@/lib/auth/password'
@@ -24,7 +24,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Faltan datos' }, { status: 400 })
   }
 
-  const limit = rateLimit(req, `password-change:${session.email}`, {
+  const limit = await rateLimit(req, `password-change:${session.email}`, {
     limit: 5,
     windowMs: 15 * 60 * 1000,
   })

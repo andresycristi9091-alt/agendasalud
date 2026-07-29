@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { AppointmentSchema } from '@/lib/validation'
 import { bookAppointment } from '@/lib/appointments'
 import { sendBookingConfirmation } from '@/lib/email'
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const limit = rateLimit(
+    const limit = await rateLimit(
       req,
       `public-booking:${parsed.data.professionalSlug}:${parsed.data.patientEmail}`,
       { limit: 5, windowMs: 10 * 60 * 1000 }

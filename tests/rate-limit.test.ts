@@ -14,7 +14,7 @@ function uniqueAction(): string {
   return `test-action-${actionCounter}`
 }
 
-describe('rateLimit', () => {
+describe('rateLimit (memoria)', () => {
   beforeEach(() => {
     vi.useFakeTimers()
   })
@@ -23,12 +23,12 @@ describe('rateLimit', () => {
     vi.useRealTimers()
   })
 
-  test('allows requests below the limit', () => {
+  test('allows requests below the limit', async () => {
     const action = uniqueAction()
     const options = { limit: 3, windowMs: 60_000 }
 
-    const first = rateLimit(makeRequest('1.1.1.1'), action, options)
-    const second = rateLimit(makeRequest('1.1.1.1'), action, options)
+    const first = await rateLimit(makeRequest('1.1.1.1'), action, options)
+    const second = await rateLimit(makeRequest('1.1.1.1'), action, options)
 
     expect(first.allowed).toBe(true)
     expect(first.remaining).toBe(2)
@@ -36,47 +36,112 @@ describe('rateLimit', () => {
     expect(second.remaining).toBe(1)
   })
 
-  test('blocks requests over the limit with retryAfter', () => {
+  test('blocks requests over the limit with retryAfter', async () => {
     const action = uniqueAction()
     const options = { limit: 2, windowMs: 60_000 }
 
-    rateLimit(makeRequest('2.2.2.2'), action, options)
-    rateLimit(makeRequest('2.2.2.2'), action, options)
-    const blocked = rateLimit(makeRequest('2.2.2.2'), action, options)
+    await rateLimit(makeRequest('2.2.2.2'), action, options)
+    await rateLimit(makeRequest('2.2.2.2'), action, options)
+    const blocked = await rateLimit(makeRequest('2.2.2.2'), action, options)
 
     expect(blocked.allowed).toBe(false)
     expect(blocked.remaining).toBe(0)
     expect(blocked.retryAfter).toBeGreaterThan(0)
   })
 
-  test('resets the bucket after the window expires', () => {
+  test('resets the bucket after the window expires', async () => {
     const action = uniqueAction()
     const options = { limit: 1, windowMs: 60_000 }
 
-    rateLimit(makeRequest('3.3.3.3'), action, options)
-    expect(rateLimit(makeRequest('3.3.3.3'), action, options).allowed).toBe(false)
+    await rateLimit(makeRequest('3.3.3.3'), action, options)
+    expect((await rateLimit(makeRequest('3.3.3.3'), action, options)).allowed).toBe(false)
 
     vi.advanceTimersByTime(61_000)
 
-    expect(rateLimit(makeRequest('3.3.3.3'), action, options).allowed).toBe(true)
+    expect((await rateLimit(makeRequest('3.3.3.3'), action, options)).allowed).toBe(true)
   })
 
-  test('tracks different IPs independently', () => {
+  test('tracks different IPs independently', async () => {
     const action = uniqueAction()
     const options = { limit: 1, windowMs: 60_000 }
 
-    expect(rateLimit(makeRequest('4.4.4.4'), action, options).allowed).toBe(true)
-    expect(rateLimit(makeRequest('5.5.5.5'), action, options).allowed).toBe(true)
-    expect(rateLimit(makeRequest('4.4.4.4'), action, options).allowed).toBe(false)
+    expect((await rateLimit(makeRequest('4.4.4.4'), action, options)).allowed).toBe(true)
+    expect((await rateLimit(makeRequest('5.5.5.5'), action, options)).allowed).toBe(true)
+    expect((await rateLimit(makeRequest('4.4.4.4'), action, options)).allowed).toBe(false)
   })
 
-  test('handles requests without IP headers using a shared bucket', () => {
+  test('handles requests without IP headers using a shared bucket', async () => {
     const action = uniqueAction()
     const options = { limit: 1, windowMs: 60_000 }
-    const anonymous = new Request('http://localhost/api/test')
+    const anonymous = () => new Request('http://localhost/api/test')
 
-    expect(rateLimit(anonymous, action, options).allowed).toBe(true)
-    expect(rateLimit(anonymous, action, options).allowed).toBe(false)
+    expect((await rateLimit(anonymous(), action, options)).allowed).toBe(true)
+    expect((await rateLimit(anonymous(), action, options)).allowed).toBe(false)
+  })
+})
+
+describe('rateLimit (Redis/Upstash)', () => {
+  const originalFetch = global.fetch
+
+  beforeEach(() => {
+    process.env.UPSTASH_REDIS_REST_URL = 'https://fake-redis.upstash.io'
+    process.env.UPSTASH_REDIS_REST_TOKEN = 'fake-token'
+  })
+
+  afterEach(() => {
+    delete process.env.UPSTASH_REDIS_REST_URL
+    delete process.env.UPSTASH_REDIS_REST_TOKEN
+    global.fetch = originalFetch
+  })
+
+  function mockPipeline(count: number, ttl: number) {
+    return vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [{ result: count }, { result: 1 }, { result: ttl }],
+    })
+  }
+
+  test('allows when the Redis counter is below the limit', async () => {
+    global.fetch = mockPipeline(2, 30_000) as typeof fetch
+
+    const result = await rateLimit(makeRequest('6.6.6.6'), uniqueAction(), { limit: 5, windowMs: 60_000 })
+
+    expect(result.allowed).toBe(true)
+    expect(result.remaining).toBe(3)
+  })
+
+  test('blocks when the Redis counter exceeds the limit', async () => {
+    global.fetch = mockPipeline(6, 30_000) as typeof fetch
+
+    const result = await rateLimit(makeRequest('6.6.6.6'), uniqueAction(), { limit: 5, windowMs: 60_000 })
+
+    expect(result.allowed).toBe(false)
+    expect(result.retryAfter).toBe(30)
+  })
+
+  test('sends the pipeline with INCR, PEXPIRE NX and PTTL', async () => {
+    const fetchMock = mockPipeline(1, 60_000)
+    global.fetch = fetchMock as typeof fetch
+
+    await rateLimit(makeRequest('7.7.7.7'), 'redis-shape', { limit: 5, windowMs: 60_000 })
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://fake-redis.upstash.io/pipeline')
+    const commands = JSON.parse(init.body)
+    expect(commands[0][0]).toBe('INCR')
+    expect(commands[1][0]).toBe('PEXPIRE')
+    expect(commands[1][3]).toBe('NX')
+    expect(commands[2][0]).toBe('PTTL')
+  })
+
+  test('falls back to memory when Redis fails', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error('network down')) as typeof fetch
+
+    const action = uniqueAction()
+    const options = { limit: 1, windowMs: 60_000 }
+
+    expect((await rateLimit(makeRequest('8.8.8.8'), action, options)).allowed).toBe(true)
+    expect((await rateLimit(makeRequest('8.8.8.8'), action, options)).allowed).toBe(false)
   })
 })
 

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { getAppointmentsByPatientEmail, getProfessionalById } from '@/lib/google/sheets'
 import { z } from 'zod'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Correo invalido' }, { status: 400 })
   }
 
-  const limit = rateLimit(req, `appointments-by-email:${parsed.data.email}`, {
+  const limit = await rateLimit(req, `appointments-by-email:${parsed.data.email}`, {
     limit: 8,
     windowMs: 15 * 60 * 1000,
   })

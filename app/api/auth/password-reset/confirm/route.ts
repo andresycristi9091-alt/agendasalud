@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { evaluateResetRecord, hashResetToken } from '@/lib/auth/password-reset'
 import { hashPassword } from '@/lib/auth/password'
 import { createAdminSupabaseClient } from '@/lib/auth/admin'
@@ -15,7 +15,7 @@ const INVALID_TOKEN_MESSAGE =
   'El enlace de recuperacion no es valido o ya expiro. Solicita uno nuevo.'
 
 export async function POST(req: Request) {
-  const limit = rateLimit(req, 'password-reset-confirm', {
+  const limit = await rateLimit(req, 'password-reset-confirm', {
     limit: 5,
     windowMs: 15 * 60 * 1000,
   })

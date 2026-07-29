@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
 import {
   RESET_TOKEN_TTL_MINUTES,
@@ -19,7 +19,7 @@ const GENERIC_MESSAGE =
   'Si el correo existe en AgendaSalud, enviaremos instrucciones para restablecer la contrasena.'
 
 export async function POST(req: Request) {
-  const limit = rateLimit(req, 'password-reset-request', {
+  const limit = await rateLimit(req, 'password-reset-request', {
     limit: 3,
     windowMs: 15 * 60 * 1000,
   })

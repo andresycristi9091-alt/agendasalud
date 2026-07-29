@@ -130,6 +130,31 @@ export function AvailabilityExceptionsPanel({ professionalId, isAdmin = false, p
     }
   }
 
+  async function handleLoadHolidays(year: number) {
+    setFeedback(null)
+    setIsSaving(true)
+    try {
+      const response = await fetch('/api/admin/holidays', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year }),
+      })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        setFeedback({ tone: 'error', text: data.error ?? 'No se pudieron cargar los feriados.' })
+        return
+      }
+
+      setFeedback({ tone: 'info', text: data.message ?? 'Feriados cargados.' })
+      await loadExceptions()
+    } catch {
+      setFeedback({ tone: 'error', text: 'Error de conexion al cargar feriados.' })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   async function handleDelete(id: string) {
     setFeedback(null)
     try {
@@ -262,6 +287,23 @@ export function AvailabilityExceptionsPanel({ professionalId, isAdmin = false, p
           {isSaving ? 'Guardando...' : 'Crear bloqueo'}
         </button>
       </form>
+
+      {isAdmin && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 bg-white px-4 py-3">
+          <p className="text-xs font-bold text-slate-600">Carga rapida:</p>
+          {[2026, 2027].map((year) => (
+            <button
+              key={year}
+              type="button"
+              disabled={isSaving}
+              onClick={() => handleLoadHolidays(year)}
+              className="rounded-xl border border-amber-300 px-3 py-2 text-xs font-black text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
+            >
+              Feriados de Chile {year}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="mt-5 space-y-2">
         <h4 className="text-sm font-black text-slate-800">Bloqueos vigentes</h4>
