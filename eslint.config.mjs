@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Blueprint de referencia del cliente: no es codigo de la app.
+    "docs/agendamiento-clinico/**",
   ]),
 ]);
 

@@ -10,6 +10,14 @@ type BookingEmailParams = {
   appointmentId: string
 }
 
+// Sin datos personales en logs (Ley 19.628 / invariante I-11 del blueprint):
+// los destinatarios se registran enmascarados.
+function maskRecipient(email: string): string {
+  const [local, domain] = String(email).split('@')
+  if (!local || !domain) return '***'
+  return `${local.slice(0, 1)}***@${domain}`
+}
+
 function formatChileDate(isoDate: string): string {
   const [year, month, day] = isoDate.split('-')
   const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -440,7 +448,7 @@ function buildPasswordResetHtml(params: PasswordResetEmailParams): string {
 export async function sendPasswordResetEmail(params: PasswordResetEmailParams): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
-    console.warn('[email] RESEND_API_KEY no configurado. Reset no enviado a', params.email)
+    console.warn('[email] RESEND_API_KEY no configurado. Reset no enviado a', maskRecipient(params.email))
     return
   }
 
@@ -469,7 +477,7 @@ export async function sendPasswordResetEmail(params: PasswordResetEmailParams): 
 export async function sendReminderEmail(params: ReminderEmailParams): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
-    console.warn('[email] RESEND_API_KEY no configurado. Recordatorio no enviado a', params.patientEmail)
+    console.warn('[email] RESEND_API_KEY no configurado. Recordatorio no enviado a', maskRecipient(params.patientEmail))
     return
   }
 
@@ -505,7 +513,7 @@ export async function sendBookingConfirmation(params: BookingEmailParams): Promi
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
     // Si no hay clave configurada, logear y continuar (no bloquear la cita)
-    console.warn('[email] RESEND_API_KEY no configurado. Confirmacion no enviada a', params.patientEmail)
+    console.warn('[email] RESEND_API_KEY no configurado. Confirmacion no enviada a', maskRecipient(params.patientEmail))
     return
   }
 

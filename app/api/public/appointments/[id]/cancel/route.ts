@@ -3,6 +3,7 @@ import { getAppointmentById, updateAppointmentStatus, getProfessionalById } from
 import { cancelCalendarEvent } from '@/lib/google/calendar'
 import { sendCancellationEmail, sendProfessionalCancellationEmail } from '@/lib/email'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
+import { getRequestIp, logAuditEvent, maskEmail } from '@/lib/audit'
 
 export async function POST(
   req: Request,
@@ -48,6 +49,19 @@ export async function POST(
   }
 
   await updateAppointmentStatus(id, 'cancelada')
+
+  // Invariante I-05 del blueprint: toda transicion de estado queda auditada,
+  // incluida la cancelacion iniciada por el propio paciente.
+  logAuditEvent({
+    actorEmail: maskEmail(body.email),
+    actorRole: 'patient',
+    action: 'status_change',
+    entityType: 'appointment',
+    entityId: id,
+    details: { status: 'cancelada', origin: 'public' },
+    ip: getRequestIp(req),
+  })
+
   const professional = await getProfessionalById(appointment.professionalId).catch(() => null)
 
   // Cancelar evento en Google Calendar

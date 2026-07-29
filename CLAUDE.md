@@ -2,6 +2,17 @@
 
 AgendaSalud es una app HealthTech/SaaS en Next.js App Router para agendamiento medico.
 
+## Arquitectura objetivo (blueprint del cliente)
+
+En `docs/agendamiento-clinico/` vive el blueprint completo de la plataforma
+objetivo (NestJS + PostgreSQL, 13 invariantes de dominio, ADRs, tickets).
+El mapeo entre ese blueprint y este MVP, con el camino de migracion por etapas,
+esta en `docs/RECONCILIACION_MVP_BLUEPRINT.md`. Antes de tocar reserva de citas,
+auditoria, zona horaria o notificaciones, leer los invariantes en
+`docs/agendamiento-clinico/docs/invariantes.md`: aplican como norte aunque el
+stack actual sea Sheets. Cambios sensibles a esas areas se marcan explicitamente
+en el resumen del commit/PR.
+
 ## Producto
 
 Hay dos paginas principales:

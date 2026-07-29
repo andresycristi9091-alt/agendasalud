@@ -172,7 +172,31 @@ Revisar en el dashboard de Vercel:
 
 Nada de lo mergeado hoy esta activo en produccion hasta resolver esto.
 
-## Infraestructura y feriados (ultima sesion)
+## Blueprint del cliente incorporado (ultima sesion)
+
+El cliente entrego el blueprint "Plataforma de Agendamiento Clinico" y quedo
+incorporado al repo:
+
+- `docs/agendamiento-clinico/`: blueprint completo (CLAUDE.md propio, 13 invariantes,
+  ADRs 0001-0005, alcance funcional, arquitectura tecnica, migraciones SQL de
+  referencia con EXCLUDE constraints, implementaciones de referencia de la
+  transaccion de reserva y reconciliacion, y 14 tickets de Fase 1 + backlogs).
+- `docs/RECONCILIACION_MVP_BLUEPRINT.md`: mapeo invariante por invariante contra
+  el MVP actual, y camino incremental en 3 etapas (0: cierres baratos ya hechos;
+  1: nucleo transaccional en Supabase Postgres - decision pendiente del cliente;
+  2: blueprint completo como proyecto mayor).
+- `CLAUDE.md` raiz ahora referencia el blueprint como arquitectura objetivo.
+
+Etapa 0 ejecutada en esta sesion (cierres alineados a invariantes):
+
+- I-05: la cancelacion publica (`POST /api/public/appointments/[id]/cancel`)
+  ahora emite evento de auditoria con el email del paciente enmascarado.
+- I-07: al eliminar un bloque de disponibilidad con fecha exacta, la API cuenta
+  citas activas de ese dia y devuelve `warning`; el panel profesional lo muestra.
+- I-11: los logs de `lib/email.ts` ya no imprimen correos de pacientes en claro
+  (helper `maskRecipient`).
+
+## Infraestructura y feriados (sesion anterior)
 
 - Rate limiting persistente (prioridad 9):
   - `lib/rate-limit.ts` ahora es async y usa Redis via REST cuando existen

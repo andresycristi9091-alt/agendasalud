@@ -245,11 +245,15 @@ export function ClientWorkspace() {
     if (!window.confirm(`Eliminar el bloque ${label}? Los pacientes ya no podran reservar en esas horas.`)) return
     try {
       const response = await fetch(`/api/dashboard/availability/${id}`, { method: 'DELETE' })
+      const data = await response.json().catch(() => null)
       if (!response.ok) {
-        const data = await response.json().catch(() => null)
         setMessageTone('error')
         setMessage(data?.error ?? 'No pudimos eliminar este bloque.')
         return
+      }
+      if (data?.warning) {
+        setMessageTone('info')
+        setMessage(data.warning)
       }
       setAvailability((current) => current.filter((item) => item.id !== id))
     } catch {
