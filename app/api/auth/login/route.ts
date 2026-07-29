@@ -3,6 +3,7 @@ import { getManagedUserByEmail } from '@/lib/google/sheets'
 import { verifyPassword } from '@/lib/auth/password'
 import { setLocalUserSession } from '@/lib/auth/local-admin-session'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
+import { getRequestIp, logAuditEvent } from '@/lib/audit'
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}))
@@ -24,6 +25,14 @@ export async function POST(req: Request) {
 
   const user = await getManagedUserByEmail(email)
   if (!user || !verifyPassword(password, user.passwordHash)) {
+    logAuditEvent({
+      actorEmail: email,
+      actorRole: 'anonymous',
+      action: 'login_failed',
+      entityType: 'session',
+      entityId: '',
+      ip: getRequestIp(req),
+    })
     return NextResponse.json({ error: 'Correo o contrasena incorrectos' }, { status: 401 })
   }
 

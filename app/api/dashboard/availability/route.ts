@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAvailability, getAllAvailability } from '@/lib/google/sheets'
 import { AvailabilitySchema } from '@/lib/validation'
 import { getAllowedProfessionals, requireProfessionalAccess } from '@/lib/auth/permissions'
+import { getRequestIp, logAuditEvent } from '@/lib/audit'
 import { v4 as uuidv4 } from 'uuid'
 
 export async function GET() {
@@ -32,8 +33,25 @@ export async function POST(req: Request) {
       )
     }
 
-    await requireProfessionalAccess(parsed.data.professionalId)
-    await createAvailability({ id: uuidv4(), active: true, ...parsed.data })
+    const { context } = await requireProfessionalAccess(parsed.data.professionalId)
+    const availabilityId = uuidv4()
+    await createAvailability({ id: availabilityId, active: true, ...parsed.data })
+
+    logAuditEvent({
+      actorEmail: context.user?.email ?? '',
+      actorRole: context.role,
+      action: 'create',
+      entityType: 'availability',
+      entityId: availabilityId,
+      details: {
+        professionalId: parsed.data.professionalId,
+        dayOfWeek: parsed.data.dayOfWeek,
+        startTime: parsed.data.startTime,
+        endTime: parsed.data.endTime,
+      },
+      ip: getRequestIp(req),
+    })
+
     return NextResponse.json({ message: 'Disponibilidad creada' }, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Error al crear disponibilidad'

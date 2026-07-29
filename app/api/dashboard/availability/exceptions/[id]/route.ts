@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth/admin'
 import { requireProfessionalAccess } from '@/lib/auth/permissions'
 import { deleteAvailabilityException, getAvailabilityExceptions } from '@/lib/google/sheets'
+import { getRequestIp, logAuditEvent } from '@/lib/audit'
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -16,13 +17,22 @@ export async function DELETE(
       return NextResponse.json({ error: 'Bloqueo no encontrado' }, { status: 404 })
     }
 
-    if (exception.scope === 'professional') {
-      await requireProfessionalAccess(exception.scopeId)
-    } else {
-      await requireAdmin()
-    }
+    const actorContext = exception.scope === 'professional'
+      ? (await requireProfessionalAccess(exception.scopeId)).context
+      : await requireAdmin()
 
     await deleteAvailabilityException(id)
+
+    logAuditEvent({
+      actorEmail: actorContext.user?.email ?? '',
+      actorRole: actorContext.role,
+      action: 'delete',
+      entityType: 'availability_exception',
+      entityId: id,
+      details: { scope: exception.scope, scopeId: exception.scopeId, date: exception.date },
+      ip: getRequestIp(req),
+    })
+
     return NextResponse.json({ message: 'Bloqueo eliminado' })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Error al eliminar bloqueo'

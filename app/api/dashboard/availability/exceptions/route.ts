@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/auth/admin'
 import { getAllowedProfessionals, requireProfessionalAccess } from '@/lib/auth/permissions'
 import { createAvailabilityException, getAvailabilityExceptions } from '@/lib/google/sheets'
 import { AvailabilityExceptionSchema } from '@/lib/validation'
+import { getRequestIp, logAuditEvent } from '@/lib/audit'
 
 export async function GET() {
   try {
@@ -46,13 +47,30 @@ export async function POST(req: Request) {
     }
 
     // Bloqueos por centro o globales son exclusivos del administrador.
-    if (parsed.data.scope === 'professional') {
-      await requireProfessionalAccess(parsed.data.scopeId)
-    } else {
-      await requireAdmin()
-    }
+    const actorContext = parsed.data.scope === 'professional'
+      ? (await requireProfessionalAccess(parsed.data.scopeId)).context
+      : await requireAdmin()
 
-    await createAvailabilityException({ id: uuidv4(), ...parsed.data })
+    const exceptionId = uuidv4()
+    await createAvailabilityException({ id: exceptionId, ...parsed.data })
+
+    logAuditEvent({
+      actorEmail: actorContext.user?.email ?? '',
+      actorRole: actorContext.role,
+      action: 'create',
+      entityType: 'availability_exception',
+      entityId: exceptionId,
+      details: {
+        scope: parsed.data.scope,
+        scopeId: parsed.data.scopeId,
+        date: parsed.data.date,
+        startTime: parsed.data.startTime,
+        endTime: parsed.data.endTime,
+        reason: parsed.data.reason,
+      },
+      ip: getRequestIp(req),
+    })
+
     return NextResponse.json({ message: 'Bloqueo creado' }, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Error al crear bloqueo'

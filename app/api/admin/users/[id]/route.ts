@@ -3,6 +3,7 @@ import { createAdminSupabaseClient, isPrimaryAdminEmail, requireAdmin } from '@/
 import { AdminUserUpdateSchema } from '@/lib/validation'
 import { hashPassword } from '@/lib/auth/password'
 import { deleteManagedUser, getManagedUsers, updateManagedUser } from '@/lib/google/sheets'
+import { getRequestIp, logAuditEvent } from '@/lib/audit'
 
 async function findSupabaseUserByEmail(email: string) {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return null
@@ -36,7 +37,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin()
+    const adminContext = await requireAdmin()
     const { id } = await params
     const body = await req.json()
     const parsed = AdminUserUpdateSchema.safeParse(body)
@@ -95,6 +96,22 @@ export async function PATCH(
         },
         ...(isPrimaryAdmin || parsed.data.active === true ? { ban_duration: 'none' } : {}),
         ...(!isPrimaryAdmin && parsed.data.active === false ? { ban_duration: '876000h' } : {}),
+      })
+
+      logAuditEvent({
+        actorEmail: adminContext.user?.email ?? '',
+        actorRole: adminContext.role,
+        action: 'update',
+        entityType: 'user',
+        entityId: id,
+        details: {
+          email: requestedEmail,
+          role: nextRole,
+          centerId: nextCenterId,
+          active: isPrimaryAdmin ? true : (parsed.data.active ?? managedUser.active),
+          credentialChanged: Boolean(parsed.data.password),
+        },
+        ip: getRequestIp(req),
       })
 
       return NextResponse.json({
@@ -174,7 +191,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin()
+    const adminContext = await requireAdmin()
     const { id } = await params
     const hardDelete = new URL(req.url).searchParams.get('hard') === 'true'
 
@@ -202,6 +219,16 @@ export async function DELETE(
           if (error) console.warn('[admin users] No se pudo sincronizar eliminacion en Supabase:', error.message)
         }
       }
+
+      logAuditEvent({
+        actorEmail: adminContext.user?.email ?? '',
+        actorRole: adminContext.role,
+        action: hardDelete ? 'delete' : 'deactivate',
+        entityType: 'user',
+        entityId: id,
+        details: { email: managedUser.email },
+        ip: getRequestIp(req),
+      })
 
       return NextResponse.json({ ok: true })
     }

@@ -878,6 +878,59 @@ export async function deleteAvailabilityException(id: string): Promise<void> {
   })
 }
 
+// ── Audit log ───────────────────────────────────────────────
+export type AuditLogRecord = {
+  id: string
+  timestamp: string
+  actorEmail: string
+  actorRole: string
+  action: string
+  entityType: string
+  entityId: string
+  details: string
+  ip: string
+}
+
+const AUDIT_HEADERS = ['id', 'timestamp', 'actorEmail', 'actorRole', 'action', 'entityType', 'entityId', 'details', 'ip']
+
+export async function appendAuditLog(
+  data: Omit<AuditLogRecord, 'id' | 'timestamp'>
+): Promise<void> {
+  await ensureSheet('auditLog', AUDIT_HEADERS)
+  await appendRow('auditLog!A:I', [
+    crypto.randomUUID(),
+    new Date().toISOString(),
+    data.actorEmail,
+    data.actorRole,
+    data.action,
+    data.entityType,
+    data.entityId,
+    data.details,
+    data.ip,
+  ])
+}
+
+export async function getAuditLog(limit = 100): Promise<AuditLogRecord[]> {
+  const rows = await getSheetData('auditLog!A:I').catch(() => [])
+  if (rows.length < 2) return []
+
+  return rows.slice(1)
+    .filter((row) => row[0])
+    .map((row) => ({
+      id: row[0] ?? '',
+      timestamp: row[1] ?? '',
+      actorEmail: row[2] ?? '',
+      actorRole: row[3] ?? '',
+      action: row[4] ?? '',
+      entityType: row[5] ?? '',
+      entityId: row[6] ?? '',
+      details: row[7] ?? '',
+      ip: row[8] ?? '',
+    }))
+    .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+    .slice(0, limit)
+}
+
 // ── Password resets ─────────────────────────────────────────
 export type PasswordResetRecord = {
   id: string

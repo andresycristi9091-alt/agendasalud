@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { AvailabilityExceptionsPanel } from '@/components/dashboard/AvailabilityExceptionsPanel'
+import { AuditLogPanel } from './AuditLogPanel'
 
 type HealthCenter = {
   id: string
@@ -910,6 +911,8 @@ export function AdminWorkspace() {
           </Panel>
         </div>
       </section>
+
+      <AuditLogPanel />
 
       {message && <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-black text-blue-700">{message}</div>}
     </div>

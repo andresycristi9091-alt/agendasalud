@@ -158,7 +158,36 @@ Ultimo foco implementado:
   - `ADMIN_SESSION_SECRET` ya no provoca 500 si falta; usa fallback estable para no romper `/dashboard`.
   - `ADMIN_EMAILS` ya no provoca 500 si falta; retorna lista vacia y respeta `user_metadata.role`.
 
-## Tests automatizados y booking rules (ultima sesion)
+## Fases A/B/C del plan de candidatos (ultima sesion)
+
+Plan completo en `docs/PLAN_CANDIDATOS_SIGUIENTES.md`. Las tres fases quedaron implementadas:
+
+### Fase A - Recuperacion de contrasena (usuarios internos)
+
+- `lib/auth/password-reset.ts`: tokens de 32 bytes, hash SHA-256, TTL 45 min, un solo uso.
+- Hoja `passwordResets` en Sheets; al emitir un token se invalidan los anteriores del mismo email.
+- `POST /api/auth/password-reset/request`: rate limit 3/15min, respuesta generica anti enumeracion, email via Resend (`sendPasswordResetEmail`).
+- `POST /api/auth/password-reset/confirm`: rate limit 5/15min, valida `StrongPasswordSchema`, guarda hash PBKDF2 (migra hashes legacy) y sincroniza Supabase best effort.
+- Paginas `/recuperar-contrasena` y `/restablecer-contrasena`; link en login (modo contrasena).
+
+### Fase B - Excepciones de disponibilidad (feriados y bloqueos)
+
+- `lib/availability-exceptions.ts`: alcance `professional` | `center` | `all`; dia completo (sin horas) o rango horario.
+- Hoja `availabilityExceptions` con CRUD en `lib/google/sheets.ts`.
+- `getAvailableSlotsForDate`: excepcion de dia completo vacia la agenda; parciales se suman a intervalos bloqueados (sin buffer).
+- `bookAppointment` publico re-verifica excepciones; flujo manual del profesional exento (puede sobreescribir bloqueos).
+- API `GET/POST /api/dashboard/availability/exceptions` + `DELETE .../[id]`. Profesional gestiona scope propio; centro/global requiere admin.
+- `AvailabilityExceptionsPanel` montado en panel profesional (seccion operacion diaria) y en Admin (columna izquierda, con selector de alcance).
+
+### Fase C - Auditoria de acciones admin
+
+- `lib/audit.ts`: `logAuditEvent` fire-and-forget (nunca bloquea la operacion principal), `sanitizeAuditDetails` remueve claves sensibles (password/token/secret/hash) y enmascara emails, detalles truncados a 500 chars.
+- Hoja `auditLog` (id, timestamp, actorEmail, actorRole, action, entityType, entityId, details, ip).
+- Instrumentado: admin users (create/update/delete/deactivate), admin professionals (create/update/delete), admin centers (create), citas (status_change), disponibilidad (create/delete), bloqueos (create/delete), logins fallidos (auth y admin).
+- `GET /api/admin/audit?entityType=&limit=` con `requireAdmin`.
+- `AuditLogPanel` (solo lectura, filtros por entidad) al final del panel Admin.
+
+## Tests automatizados y booking rules (sesion anterior)
 
 - Vitest configurado (`vitest.config.ts`, scripts `npm test` y `npm run test:watch`).
 - 59 tests en `tests/` cubriendo:
@@ -335,12 +364,12 @@ Prioridades siguientes:
    - Confirmar registro en Sheets.
    - Confirmar evento en Calendar del correo del usuario/centro.
 4. Probar agendamiento real con un calendario compartido del profesional.
-5. Mejorar recuperacion/cambio de contrasena para usuarios internos.
-6. Agregar auditoria de acciones admin y cambios de agenda.
-7. HECHO: pruebas basicas con Vitest (59 tests en tests/). Ampliar cobertura a rutas API.
+5. HECHO: recuperacion de contrasena para usuarios internos (flujo completo con email).
+6. HECHO: auditoria de acciones admin y cambios de agenda (hoja auditLog + panel Actividad).
+7. HECHO: pruebas basicas con Vitest (92 tests en tests/). Ampliar cobertura a rutas API.
 8. Mantener accesibilidad WCAG, mensajes claros y diseno HealthTech.
 9. Migrar rate limiting actual desde memoria local a Redis/Vercel KV/Unkey antes de escalar trafico real.
-10. HECHO: booking rules base en lib/booking-rules.ts (anticipacion minima, ventana maxima, buffer via env). Pendiente: excepciones de disponibilidad (feriados/bloqueos puntuales).
+10. HECHO: booking rules base en lib/booking-rules.ts (anticipacion minima, ventana maxima, buffer via env) y excepciones de disponibilidad (feriados/bloqueos por profesional, centro o globales).
 
 Antes de terminar:
 - Ejecuta npm run lint.

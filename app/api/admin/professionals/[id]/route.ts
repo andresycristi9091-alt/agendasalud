@@ -7,13 +7,14 @@ import {
   getAllProfessionalsForAdmin,
   updateProfessional,
 } from '@/lib/google/sheets'
+import { getRequestIp, logAuditEvent } from '@/lib/audit'
 
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin()
+    const adminContext = await requireAdmin()
     const { id } = await params
     const body = await req.json()
     const parsed = AdminProfessionalSchema.partial().safeParse(body)
@@ -23,6 +24,16 @@ export async function PATCH(
     }
 
     await updateProfessional(id, parsed.data)
+
+    logAuditEvent({
+      actorEmail: adminContext.user?.email ?? '',
+      actorRole: adminContext.role,
+      action: 'update',
+      entityType: 'professional',
+      entityId: id,
+      details: { fields: Object.keys(parsed.data).join(',') },
+      ip: getRequestIp(req),
+    })
     const professionals = await getAllProfessionalsForAdmin()
     return NextResponse.json({ professionals })
   } catch (error) {
@@ -35,7 +46,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin()
+    const adminContext = await requireAdmin()
     const { id } = await params
     const hardDelete = new URL(req.url).searchParams.get('hard') === 'true'
     if (hardDelete) {
@@ -48,6 +59,15 @@ export async function DELETE(
     } else {
       await deactivateProfessional(id)
     }
+
+    logAuditEvent({
+      actorEmail: adminContext.user?.email ?? '',
+      actorRole: adminContext.role,
+      action: hardDelete ? 'delete' : 'deactivate',
+      entityType: 'professional',
+      entityId: id,
+      ip: getRequestIp(req),
+    })
     const professionals = await getAllProfessionalsForAdmin()
     return NextResponse.json({ professionals })
   } catch (error) {

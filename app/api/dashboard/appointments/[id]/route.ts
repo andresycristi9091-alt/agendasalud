@@ -3,7 +3,8 @@ import { updateAppointmentStatus, getAppointmentById, getProfessionalById } from
 import { cancelCalendarEvent } from '@/lib/google/calendar'
 import { sendCancellationEmail, sendProfessionalCancellationEmail } from '@/lib/email'
 import { UpdateStatusSchema } from '@/lib/validation'
-import { requireAppointmentAccess } from '@/lib/auth/permissions'
+import { requireAppointmentAccess, requireDashboardUser } from '@/lib/auth/permissions'
+import { getRequestIp, logAuditEvent } from '@/lib/audit'
 
 export async function PATCH(
   req: Request,
@@ -19,10 +20,21 @@ export async function PATCH(
     }
 
     await requireAppointmentAccess(id)
+    const actorContext = await requireDashboardUser()
 
     const appointment = await getAppointmentById(id)
 
     await updateAppointmentStatus(id, parsed.data.status)
+
+    logAuditEvent({
+      actorEmail: actorContext.user?.email ?? '',
+      actorRole: actorContext.role,
+      action: 'status_change',
+      entityType: 'appointment',
+      entityId: id,
+      details: { status: parsed.data.status },
+      ip: getRequestIp(req),
+    })
 
     if (parsed.data.status === 'cancelada' && appointment) {
       const professional = await getProfessionalById(appointment.professionalId).catch(() => null)

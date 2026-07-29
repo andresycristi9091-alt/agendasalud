@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { requireAdmin } from '@/lib/auth/admin'
 import { AdminCenterSchema } from '@/lib/validation'
 import { createCenter, ensureDefaultCenter, getAllCenters } from '@/lib/google/sheets'
+import { getRequestIp, logAuditEvent } from '@/lib/audit'
 
 export async function GET() {
   try {
@@ -17,7 +18,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    await requireAdmin()
+    const adminContext = await requireAdmin()
     const body = await req.json()
     const parsed = AdminCenterSchema.safeParse(body)
 
@@ -25,9 +26,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Datos invalidos', details: parsed.error.flatten() }, { status: 400 })
     }
 
+    const centerId = uuidv4()
     await createCenter({
-      id: uuidv4(),
+      id: centerId,
       ...parsed.data,
+    })
+
+    logAuditEvent({
+      actorEmail: adminContext.user?.email ?? '',
+      actorRole: adminContext.role,
+      action: 'create',
+      entityType: 'center',
+      entityId: centerId,
+      details: { name: parsed.data.name, slug: parsed.data.slug },
+      ip: getRequestIp(req),
     })
 
     const centers = await getAllCenters()

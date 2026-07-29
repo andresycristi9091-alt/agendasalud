@@ -6,6 +6,7 @@ import {
   createProfessional,
   getAllProfessionalsForAdmin,
 } from '@/lib/google/sheets'
+import { getRequestIp, logAuditEvent } from '@/lib/audit'
 
 export async function GET() {
   try {
@@ -19,7 +20,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    await requireAdmin()
+    const adminContext = await requireAdmin()
     const body = await req.json()
     const parsed = AdminProfessionalSchema.safeParse(body)
 
@@ -27,9 +28,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Datos invalidos', details: parsed.error.flatten() }, { status: 400 })
     }
 
+    const professionalId = uuidv4()
     await createProfessional({
-      id: uuidv4(),
+      id: professionalId,
       ...parsed.data,
+    })
+
+    logAuditEvent({
+      actorEmail: adminContext.user?.email ?? '',
+      actorRole: adminContext.role,
+      action: 'create',
+      entityType: 'professional',
+      entityId: professionalId,
+      details: { name: parsed.data.name, slug: parsed.data.slug, centerId: parsed.data.centerId },
+      ip: getRequestIp(req),
     })
 
     const professionals = await getAllProfessionalsForAdmin()

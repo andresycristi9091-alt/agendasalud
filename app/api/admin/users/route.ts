@@ -5,6 +5,7 @@ import { createAdminSupabaseClient, isPrimaryAdminEmail, requireAdmin } from '@/
 import { AdminUserCreateSchema } from '@/lib/validation'
 import { createManagedUser, getManagedUsers } from '@/lib/google/sheets'
 import { hashPassword } from '@/lib/auth/password'
+import { getRequestIp, logAuditEvent } from '@/lib/audit'
 
 type AdminUserPayload = {
   id: string
@@ -89,7 +90,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    await requireAdmin()
+    const adminContext = await requireAdmin()
     const body = await req.json()
     const parsed = AdminUserCreateSchema.safeParse(body)
 
@@ -134,6 +135,16 @@ export async function POST(req: Request) {
         console.warn('[admin users] No se pudo sincronizar usuario en Supabase:', error.message)
       }
     }
+
+    logAuditEvent({
+      actorEmail: adminContext.user?.email ?? '',
+      actorRole: adminContext.role,
+      action: 'create',
+      entityType: 'user',
+      entityId: user.id,
+      details: { email, role, centerId },
+      ip: getRequestIp(req),
+    })
 
     return NextResponse.json({
       user: mapManagedUser(user),

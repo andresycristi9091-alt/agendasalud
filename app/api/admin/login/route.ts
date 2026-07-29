@@ -5,6 +5,7 @@ import { verifyPassword } from '@/lib/auth/password'
 import { setLocalUserSession } from '@/lib/auth/local-admin-session'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { isPrimaryAdminEmail } from '@/lib/auth/admin'
+import { getRequestIp, logAuditEvent } from '@/lib/audit'
 
 const ADMIN_EMAIL = 'admin@agendasalud.cl'
 
@@ -51,6 +52,15 @@ export async function POST(req: Request) {
   } catch {
     // Sheets no disponible — continuar con error generico
   }
+
+  logAuditEvent({
+    actorEmail: email,
+    actorRole: 'anonymous',
+    action: 'login_failed',
+    entityType: 'session',
+    entityId: '',
+    ip: getRequestIp(req),
+  })
 
   return NextResponse.json({ error: 'Correo o contrasena incorrectos' }, { status: 401 })
 }
