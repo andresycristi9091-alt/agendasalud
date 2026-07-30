@@ -158,19 +158,24 @@ Ultimo foco implementado:
   - `ADMIN_SESSION_SECRET` ya no provoca 500 si falta; usa fallback estable para no romper `/dashboard`.
   - `ADMIN_EMAILS` ya no provoca 500 si falta; retorna lista vacia y respeta `user_metadata.role`.
 
-## ALERTA: deploy de Vercel desactualizado (verificar primero)
+## RESUELTO 2026-07-30: deploy de Vercel destrabado
 
-Al 2026-07-28, `https://agendasalud.vercel.app` responde `/api/health` OK pero
-`/recuperar-contrasena` devuelve 404, es decir, el deploy NO incluye los commits
-recientes (`7269ff7` en adelante) aunque estan pusheados en
-`github.com/andresycristi9091-alt/agendasalud` rama `main`.
+Causa raiz: el cron horario (`0 * * * *`) en `vercel.json` hacia fallar la
+creacion de TODOS los deploys desde junio (el plan Hobby de Vercel solo permite
+crons diarios). Ademas la conexion Git del proyecto estaba caida; se reconecto
+a `andresycristi9091-alt/agendasalud`.
 
-Revisar en el dashboard de Vercel:
-1. Que el proyecto este conectado a ese repo y a la rama `main`.
-2. Que los ultimos deploys no esten fallando (ver logs de build).
-3. Si el dominio real es otro, actualizar `NEXT_PUBLIC_APP_URL`.
+Solucion aplicada:
+- `vercel.json`: cron bajado a diario (11:00 UTC) como respaldo.
+- `.github/workflows/reminders.yml`: GitHub Actions dispara los recordatorios
+  cada hora (gratis). El endpoint deduplica, asi que conviven sin dobles.
+  Recomendado: definir `CRON_SECRET` en Vercel y el mismo valor como secret
+  del repo en GitHub para proteger el endpoint.
+- Deploy inicial hecho via `vercel --prod` (CLI autenticada por el usuario).
+- Produccion verificada: `/recuperar-contrasena` responde 200.
 
-Nada de lo mergeado hoy esta activo en produccion hasta resolver esto.
+Los push a `main` deberian desplegar automaticamente desde ahora; si un deploy
+vuelve a fallar, revisar primero que vercel.json siga con cron diario.
 
 ## Etapa 1: nucleo de citas en Supabase Postgres (ultima sesion)
 
