@@ -177,11 +177,15 @@ Solucion aplicada:
 Los push a `main` deberian desplegar automaticamente desde ahora; si un deploy
 vuelve a fallar, revisar primero que vercel.json siga con cron diario.
 
-## Etapa 1: nucleo de citas en Supabase Postgres (ultima sesion)
+## Etapa 1: nucleo de citas en Supabase Postgres (ACTIVADA 2026-07-30)
 
-Implementada la Etapa 1 de `docs/RECONCILIACION_MVP_BLUEPRINT.md`. El codigo esta
-desplegado pero INACTIVO hasta ejecutar el runbook `docs/ETAPA1_MIGRACION_POSTGRES.md`
-(migracion SQL en Supabase + `BOOKING_BACKEND=postgres` + backfill).
+Implementada y ACTIVADA en produccion segun el runbook `docs/ETAPA1_MIGRACION_POSTGRES.md`:
+- Migracion SQL ejecutada en Supabase (verificado: 3 tablas, 3 funciones, 2 restricciones de exclusion).
+- `BOOKING_BACKEND=postgres` y `SUPABASE_SERVICE_ROLE_KEY` definidos en Vercel (Production).
+- Backfill ejecutado: 1 cita importada, 0 conflictos.
+- Desde ahora las citas viven en Postgres; Sheets es espejo de lectura.
+- Pendiente de validacion end-to-end: agendar una cita real (la hoja `professionals`
+  no tiene profesionales activos publicados en este momento, por eso `/agendar` sale vacio).
 
 - `supabase/migrations/0001_booking_core.sql`: tablas `appointment` (con DOS
   restricciones `EXCLUDE USING gist`: por profesional I-01 y por paciente I-02),
