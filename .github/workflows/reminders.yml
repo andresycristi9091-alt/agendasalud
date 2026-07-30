@@ -1,0 +1,22 @@
+# Recordatorios de citas cada hora.
+# El plan Hobby de Vercel solo permite crons diarios (vercel.json quedo en
+# 11:00 UTC como respaldo); este workflow cubre la frecuencia horaria.
+# El endpoint deduplica por cita y tipo, asi que ambos pueden convivir.
+name: reminders
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar endpoint de recordatorios
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -sS -f -m 60 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://agendasalud.vercel.app/api/cron/reminders"
