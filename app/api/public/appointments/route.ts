@@ -59,7 +59,9 @@ export async function POST(req: Request) {
       appointmentId:   result.appointmentId,
       calendarEventId: result.calendarEventId,
     }, { status: 201 })
-  } catch {
+  } catch (error) {
+    // Nunca silenciar: sin este log los 500 de reserva son indiagnosticables.
+    console.error('[public-booking] Error no controlado:', error)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }
