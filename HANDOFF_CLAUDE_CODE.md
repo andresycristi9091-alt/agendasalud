@@ -184,8 +184,15 @@ Implementada y ACTIVADA en produccion segun el runbook `docs/ETAPA1_MIGRACION_PO
 - `BOOKING_BACKEND=postgres` y `SUPABASE_SERVICE_ROLE_KEY` definidos en Vercel (Production).
 - Backfill ejecutado: 1 cita importada, 0 conflictos.
 - Desde ahora las citas viven en Postgres; Sheets es espejo de lectura.
-- Pendiente de validacion end-to-end: agendar una cita real (la hoja `professionals`
-  no tiene profesionales activos publicados en este momento, por eso `/agendar` sale vacio).
+- VALIDADA end-to-end el 2026-07-30: cita real agendada desde el funnel publico
+  (profesional `aaa`) y verificada por el cliente en la tabla `appointment` de Supabase.
+- Durante la validacion se cazo y corrigio un bug historico: Sheets entrega
+  `slotDuration` como texto y la agenda publica generaba SIEMPRE cero slots
+  (fix `b21689f` con tests de regresion).
+- Pendiente por el cliente: configurar Resend (`RESEND_API_KEY` + `EMAIL_FROM`)
+  para que salgan los correos de confirmacion; hoy se omiten sin bloquear la cita.
+- Etapa 2 iniciada: monorepo del blueprint en repo privado
+  `andresycristi9091-alt/agendasalud-plataforma` (F1-01 scaffold completo, CI activo).
 
 - `supabase/migrations/0001_booking_core.sql`: tablas `appointment` (con DOS
   restricciones `EXCLUDE USING gist`: por profesional I-01 y por paciente I-02),
