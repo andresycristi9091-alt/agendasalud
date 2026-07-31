@@ -22,6 +22,11 @@ export function generateTimeSlots(
   endTime: string,
   slotDuration: number
 ): Array<{ startTime: string; endTime: string; startISO: string; endISO: string }> {
+  // Defensa en profundidad: los datos de Sheets llegan como strings y una
+  // duracion "30" concatenaria en vez de sumar, generando cero slots.
+  const durationMinutes = Number(slotDuration)
+  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) return []
+
   const [sh, sm] = startTime.split(':').map(Number)
   const [eh, em] = endTime.split(':').map(Number)
 
@@ -30,8 +35,8 @@ export function generateTimeSlots(
   const slots: Array<{ startTime: string; endTime: string; startISO: string; endISO: string }> = []
 
   let current = startMinutes
-  while (current + slotDuration <= endMinutes) {
-    const next = current + slotDuration
+  while (current + durationMinutes <= endMinutes) {
+    const next = current + durationMinutes
     const startHH = String(Math.floor(current / 60)).padStart(2, '0')
     const startMM = String(current % 60).padStart(2, '0')
     const endHH = String(Math.floor(next / 60)).padStart(2, '0')

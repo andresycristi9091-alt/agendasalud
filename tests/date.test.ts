@@ -35,6 +35,18 @@ describe('generateTimeSlots', () => {
     expect(generateTimeSlots('2026-08-03', '09:00', '09:20', 30)).toEqual([])
   })
 
+  test('tolerates duration arriving as string from Google Sheets (regression)', () => {
+    // Bug real de produccion: Sheets entrega "30" y la concatenacion
+    // 540 + "30" = "54030" dejaba la agenda publica siempre vacia.
+    const slots = generateTimeSlots('2026-08-03', '09:00', '10:00', '30' as unknown as number)
+    expect(slots.map((s) => s.startTime)).toEqual(['09:00', '09:30'])
+  })
+
+  test('returns empty for invalid durations instead of looping or throwing', () => {
+    expect(generateTimeSlots('2026-08-03', '09:00', '10:00', 0)).toEqual([])
+    expect(generateTimeSlots('2026-08-03', '09:00', '10:00', NaN)).toEqual([])
+  })
+
   test('produces ISO datetimes anchored to Chile timezone', () => {
     const [slot] = generateTimeSlots('2026-07-28', '09:00', '09:30', 30)
     expect(slot.startISO).toBe('2026-07-28T09:00:00-04:00')

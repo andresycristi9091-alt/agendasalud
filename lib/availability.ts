@@ -92,7 +92,12 @@ export async function getAvailableSlotsForDate(
   const allSlots: TimeSlot[] = []
 
   for (const block of dayBlocks) {
-    const duration = block.slotDuration || professional.appointmentDurationDefault || 30
+    // Google Sheets entrega todo como texto: sin Number() la duracion "30"
+    // se concatena en la aritmetica de minutos y no se genera ningun slot.
+    const duration =
+      Number(block.slotDuration) ||
+      Number(professional.appointmentDurationDefault) ||
+      30
     const slots    = generateTimeSlots(date, block.startTime, block.endTime, duration)
 
     for (const slot of slots) {

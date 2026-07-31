@@ -120,6 +120,24 @@ describe('getAvailableSlotsForDate', () => {
     expect(slots.every((s) => s.available)).toBe(true)
   })
 
+  test('generates slots when Sheets returns slotDuration as string (regression)', async () => {
+    setupMocks()
+    vi.mocked(getAvailabilityByProfessional).mockResolvedValue([
+      {
+        id: 'av-1',
+        professionalId: 'prof-1',
+        dayOfWeek: DATE,
+        startTime: '09:00',
+        endTime: '11:00',
+        slotDuration: '30',
+        active: 'TRUE',
+      },
+    ] as never)
+
+    const slots = await getAvailableSlotsForDate(professional, DATE)
+    expect(slots.map((s) => s.startTime)).toEqual(['09:00', '09:30', '10:00', '10:30'])
+  })
+
   test('marks slots taken in Sheets as unavailable', async () => {
     setupMocks({ appointments: [{ startTime: '10:00', endTime: '10:30' }] })
 
